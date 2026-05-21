@@ -6,17 +6,14 @@ import numpy as np
 import random
 from collections import deque
 
-# ====================== ФИКСИРОВАННЫЕ ПАРАМЕТРЫ (не меняются в меню) ======================
-# Доходы и расходы (средние)
+# ====================== ФИКСИРОВАННЫЕ ПАРАМЕТРЫ ======================
 MALE_INCOME_BASE = 5.0
 FEMALE_INCOME_BASE = 4.0
 EXPENDITURE_BASE = 0.18
 
-# Начальный капитал
 INIT_CAPITAL_MEAN = 400.0
 INIT_CAPITAL_STD = 100.0
 
-# Адаптивность и толерантность
 INIT_ADAPT_MEAN = 50.0
 INIT_ADAPT_STD = 15.0
 INIT_TOLERANCE_MEAN = 50.0
@@ -25,43 +22,44 @@ A_MAX = 100.0
 S_MAX = 100.0
 
 INIT_WORKING_PROB = 0.3
-
-# Границы расходов
 EXPENDITURE_MIN = 0.08
 EXPENDITURE_MAX = 0.28
 
-# Демография
 BIRTH_RATE_BASE = 0.012
 DEATH_RATE_BASE = 0.015
 CRISIS_DEATH_BONUS = 0.05
 
-# Локальная динамика ресурса
+CRISIS_PERIOD = 200
+BOOM_FACTOR = 1.4
+CRISIS_FACTOR = 0.4
+
 RESOURCE_BASE = 22.0
 RESOURCE_CONSUMPTION = 2.2
 RESOURCE_RENEWAL = 0.35
 RESOURCE_DIFFUSION = 0.1
 
-# Глобальные циклы
-BOOM_FACTOR = 1.4
-CRISIS_FACTOR = 0.4
-
-# Движение
 MOVE_PROB = 0.3
 CELL_SIZE = 18
-INFO_PANEL_WIDTH = 280
+INFO_PANEL_WIDTH = 260
 R_MAX = 1000.0
 
-# Цвета
-COLOR_RESOURCE_LOW = (0, 60, 0)
-COLOR_RESOURCE_HIGH = (80, 180, 80)
-COLOR_FAMILY_MALE = (220, 50, 50)
-COLOR_FAMILY_BOTH = (50, 220, 50)
+# ====================== ЦВЕТА ======================
+COLOR_RESOURCE_LOW = (0, 0, 80)
+COLOR_RESOURCE_HIGH = (200, 220, 255)
+COLOR_FAMILY_MALE = (255, 80, 80)
+COLOR_FAMILY_BOTH = (80, 255, 80)
 COLOR_OUTLINE = (0, 0, 0)
-COLOR_TEXT = (255, 255, 255)
-COLOR_PANEL = (30, 30, 40)
-COLOR_MENU_BG = (20, 20, 30)
-COLOR_MENU_SELECT = (100, 100, 200)
-COLOR_INPUT_BG = (50, 50, 70)
+
+COLOR_PANEL = (50, 50, 60)
+COLOR_BACKGROUND = (50, 50, 60)
+COLOR_TEXT = (220, 220, 230)
+COLOR_BUTTON = (70, 70, 85)
+COLOR_BUTTON_HOVER = (100, 100, 120)
+COLOR_MENU_BG = (45, 45, 55)
+COLOR_MENU_SELECT = (120, 120, 140)
+COLOR_INPUT_BG = (60, 60, 75)
+COLOR_START_BUTTON = (30, 120, 30)
+COLOR_START_HOVER = (50, 160, 50)
 
 
 class Family:
@@ -79,14 +77,12 @@ class Family:
         self.alive = True
         self.config = config
 
-    def update(self, resource, global_phase):
+    def update(self, cell_resource, is_crisis):
         if not self.alive:
             return
-
-        income = (self.male_income + self.female_income) * resource
+        income = (self.male_income + self.female_income) * cell_resource
         spend = self.expenditure_rate * self.capital
         self.capital = self.capital - spend + income
-
         if self.capital <= 0:
             self.alive = False
             return
@@ -99,10 +95,8 @@ class Family:
                 self.woman_works = 1
                 self.female_income = FEMALE_INCOME_BASE
                 self.adaptation = min(A_MAX, self.adaptation + 2)
-
         elif self.capital < sn * an * self.config['r_bar']:
             self.expenditure_rate = max(EXPENDITURE_MIN, self.expenditure_rate * 0.97)
-
         elif self.capital > sn * an * R_MAX:
             if self.woman_works == 1 and random.random() < 0.02:
                 self.woman_works = 0
@@ -125,7 +119,7 @@ class Family:
 
     def get_color(self):
         if not self.alive:
-            return (80, 80, 80)
+            return (60, 60, 70)
         return COLOR_FAMILY_BOTH if self.woman_works else COLOR_FAMILY_MALE
 
 
@@ -148,7 +142,7 @@ class World:
             self.families.append(Family(x, y, i, self.config))
 
         self.time = 0
-        self.next_phase_change = self.config['crisis_period']
+        self.next_phase_change = CRISIS_PERIOD
         self.global_phase = 'BOOM'
         self.pop_hist = deque(maxlen=2000)
         self.cap_hist = deque(maxlen=2000)
@@ -198,7 +192,7 @@ class World:
                 avg = np.mean(neighbors)
                 diffused[i, j] += RESOURCE_DIFFUSION * (avg - self.resource[i, j])
         self.resource = diffused
-        self.resource = np.clip(self.resource, RESOURCE_BASE * 0.1, RESOURCE_BASE * 4.0)
+        self.resource = np.clip(self.resource, RESOURCE_BASE * 0.1, RESOURCE_BASE * 3.0)
 
     def apply_global_phase(self):
         if self.global_phase == 'BOOM':
@@ -212,12 +206,11 @@ class World:
 
         if self.time >= self.next_phase_change:
             self.global_phase = 'CRISIS' if self.global_phase == 'BOOM' else 'BOOM'
-            self.next_phase_change = self.time + self.config['crisis_period']
+            self.next_phase_change = self.time + CRISIS_PERIOD
             self.apply_global_phase()
 
         self.update_resource_local()
 
-        # Движение
         for f in self.families:
             if not f.alive:
                 continue
@@ -227,14 +220,13 @@ class World:
                     f.x += dx
                     f.y += dy
 
-        # Обновление семей
+        is_crisis = (self.global_phase == 'CRISIS')
         for f in self.families[:]:
             if f.alive:
-                f.update(self.resource[f.x, f.y], self.global_phase)
+                f.update(self.resource[f.x, f.y], is_crisis)
             if not f.alive:
                 self.families.remove(f)
 
-        # Рождаемость
         avg_capital = np.mean([f.capital for f in self.families]) if self.families else 0
         birth_chance = BIRTH_RATE_BASE
         if self.global_phase == 'BOOM' and avg_capital > 250:
@@ -248,7 +240,6 @@ class World:
                 new_id = max([f.id for f in self.families] + [0]) + 1
                 self.families.append(Family(free[0], free[1], new_id, self.config))
 
-        # Смертность
         death_rate = DEATH_RATE_BASE + (CRISIS_DEATH_BONUS if self.global_phase == 'CRISIS' else 0)
         for f in self.families[:]:
             if f.alive and random.random() < death_rate * 0.1:
@@ -272,7 +263,6 @@ class World:
         return len(self.families)
 
 
-# ====================== МЕНЮ С КЛАВИАТУРНЫМ ВВОДОМ ======================
 class ConfigMenu:
     def __init__(self, screen, font):
         self.screen = screen
@@ -296,75 +286,84 @@ class ConfigMenu:
             "World height (int)"
         ]
         self.param_keys = ['num_families', 'r_bar', 'r_hat', 'max_vision', 'crisis_period', 'world_width', 'world_height']
-        self.selected_index = 0
+        self.param_rects = []
+        self.selected_index = None
         self.editing = False
         self.edit_buffer = ""
         self.running = True
 
     def draw(self):
-        self.screen.fill((0, 0, 0))
-        title = self.font.render("CONFIGURATION MENU - Press ENTER to edit, ESC to cancel, S to START", True, COLOR_TEXT)
+        self.screen.fill(COLOR_MENU_BG)
+        title = self.font.render("Configure Simulation - Click on a parameter, then type new value", True, COLOR_TEXT)
         self.screen.blit(title, (50, 20))
 
         y = 80
+        self.param_rects.clear()
         for i, (name, key) in enumerate(zip(self.param_names, self.param_keys)):
             value = self.params[key]
-            if isinstance(value, float):
-                display_value = f"{value:.1f}"
-            else:
-                display_value = str(value)
-            if self.selected_index == i and not self.editing:
-                color = COLOR_MENU_SELECT
-                prefix = "> "
-            else:
-                color = COLOR_TEXT
-                prefix = "  "
-            text = self.font.render(f"{prefix}{name}: {display_value}", True, color)
-            self.screen.blit(text, (50, y))
+            display_value = f"{value:.1f}" if isinstance(value, float) else str(value)
+            color = COLOR_MENU_SELECT if (self.selected_index == i and not self.editing) else COLOR_TEXT
+            text = self.font.render(f"{name}: {display_value}", True, color)
+            rect = text.get_rect(topleft=(50, y))
+            self.param_rects.append(rect)
+            self.screen.blit(text, rect)
             y += 35
 
         if self.editing:
-            edit_text = self.font.render(f"Enter new value: {self.edit_buffer}_", True, COLOR_TEXT)
-            pygame.draw.rect(self.screen, COLOR_INPUT_BG, (50, y, 400, 30))
-            self.screen.blit(edit_text, (55, y+5))
+            edit_text = self.font.render(f"Type new value: {self.edit_buffer}_ (press ENTER to save, ESC to cancel)", True, COLOR_TEXT)
+            edit_rect = edit_text.get_rect(topleft=(50, y))
+            pygame.draw.rect(self.screen, COLOR_INPUT_BG, edit_rect.inflate(10, 5))
+            self.screen.blit(edit_text, edit_rect)
 
-        start_text = self.font.render("Press S to START simulation", True, COLOR_TEXT)
-        self.screen.blit(start_text, (50, y + 60))
+        # Кнопка START
+        start_rect = pygame.Rect(50, y + 50, 200, 40)
+        mouse_pos = pygame.mouse.get_pos()
+        color_start = COLOR_START_HOVER if start_rect.collidepoint(mouse_pos) else COLOR_START_BUTTON
+        pygame.draw.rect(self.screen, color_start, start_rect)
+        pygame.draw.rect(self.screen, COLOR_TEXT, start_rect, 2)
+        start_text = self.font.render("START SIMULATION", True, COLOR_TEXT)
+        start_text_rect = start_text.get_rect(center=start_rect.center)
+        self.screen.blit(start_text, start_text_rect)
+        self.start_button_rect = start_rect
 
     def handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if self.editing:
-                if event.key == pygame.K_RETURN:
-                    try:
-                        key = self.param_keys[self.selected_index]
-                        if key in ['num_families', 'max_vision', 'crisis_period', 'world_width', 'world_height']:
-                            val = int(self.edit_buffer)
-                        else:
-                            val = float(self.edit_buffer)
-                        self.params[key] = val
-                    except ValueError:
-                        pass
-                    self.editing = False
-                    self.edit_buffer = ""
-                elif event.key == pygame.K_ESCAPE:
-                    self.editing = False
-                    self.edit_buffer = ""
-                elif event.key == pygame.K_BACKSPACE:
-                    self.edit_buffer = self.edit_buffer[:-1]
-                else:
-                    char = event.unicode
-                    if char.isdigit() or char == '.' or char == '-':
-                        self.edit_buffer += char
-            else:
-                if event.key == pygame.K_UP:
-                    self.selected_index = (self.selected_index - 1) % len(self.param_keys)
-                elif event.key == pygame.K_DOWN:
-                    self.selected_index = (self.selected_index + 1) % len(self.param_keys)
-                elif event.key == pygame.K_RETURN:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for i, rect in enumerate(self.param_rects):
+                if rect.collidepoint(event.pos):
+                    self.selected_index = i
                     self.editing = True
-                    self.edit_buffer = str(self.params[self.param_keys[self.selected_index]])
-                elif event.key == pygame.K_s or event.key == pygame.K_S:
-                    self.running = False
+                    self.edit_buffer = str(self.params[self.param_keys[i]])
+                    return
+            if hasattr(self, 'start_button_rect') and self.start_button_rect.collidepoint(event.pos):
+                self.running = False
+                return
+            if not self.editing:
+                self.selected_index = None
+
+        if event.type == pygame.KEYDOWN and self.editing:
+            if event.key == pygame.K_RETURN:
+                try:
+                    key = self.param_keys[self.selected_index]
+                    if key in ['num_families', 'max_vision', 'crisis_period', 'world_width', 'world_height']:
+                        val = int(self.edit_buffer)
+                    else:
+                        val = float(self.edit_buffer)
+                    self.params[key] = val
+                except ValueError:
+                    pass
+                self.editing = False
+                self.selected_index = None
+                self.edit_buffer = ""
+            elif event.key == pygame.K_ESCAPE:
+                self.editing = False
+                self.selected_index = None
+                self.edit_buffer = ""
+            elif event.key == pygame.K_BACKSPACE:
+                self.edit_buffer = self.edit_buffer[:-1]
+            else:
+                char = event.unicode
+                if char.isdigit() or char == '.' or char == '-':
+                    self.edit_buffer += char
 
     def run(self):
         clock = pygame.time.Clock()
@@ -380,11 +379,54 @@ class ConfigMenu:
         return self.params
 
 
-# ====================== ОТРИСОВКА СИМУЛЯЦИИ ======================
-def draw_simulation(screen, world, font, speed, paused):
-    panel = pygame.Rect(WINDOW_WIDTH, 0, INFO_PANEL_WIDTH, SCREEN_HEIGHT)
-    pygame.draw.rect(screen, COLOR_PANEL, panel)
-    y = 10
+class Button:
+    def __init__(self, x, y, w, h, text, action):
+        self.rect = pygame.Rect(x, y, w, h)
+        self.text = text
+        self.action = action
+        self.hovered = False
+
+    def draw(self, screen, font):
+        color = COLOR_BUTTON_HOVER if self.hovered else COLOR_BUTTON
+        pygame.draw.rect(screen, color, self.rect)
+        pygame.draw.rect(screen, COLOR_OUTLINE, self.rect, 2)
+        text_surf = font.render(self.text, True, COLOR_TEXT)
+        text_rect = text_surf.get_rect(center=self.rect.center)
+        screen.blit(text_surf, text_rect)
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEMOTION:
+            self.hovered = self.rect.collidepoint(event.pos)
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.rect.collidepoint(event.pos):
+                self.action()
+
+
+def draw_world(screen, world, offset_x, offset_y):
+    for x in range(world.w):
+        for y in range(world.h):
+            val = world.resource[x, y]
+            t = (val - 5) / 75
+            t = max(0, min(1, t))
+            color = (
+                int(COLOR_RESOURCE_LOW[0] + t * (COLOR_RESOURCE_HIGH[0] - COLOR_RESOURCE_LOW[0])),
+                int(COLOR_RESOURCE_LOW[1] + t * (COLOR_RESOURCE_HIGH[1] - COLOR_RESOURCE_LOW[1])),
+                int(COLOR_RESOURCE_LOW[2] + t * (COLOR_RESOURCE_HIGH[2] - COLOR_RESOURCE_LOW[2]))
+            )
+            rect = pygame.Rect(offset_x + x * CELL_SIZE, offset_y + y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(screen, color, rect)
+    for f in world.families:
+        rect = pygame.Rect(offset_x + f.x * CELL_SIZE, offset_y + f.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+        pygame.draw.rect(screen, f.get_color(), rect)
+        pygame.draw.rect(screen, COLOR_OUTLINE, rect, 2)
+        if f.capital > 600:
+            center = (rect.centerx, rect.centery)
+            pygame.draw.circle(screen, (255, 255, 200), center, 3)
+
+
+def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect):
+    pygame.draw.rect(screen, COLOR_PANEL, panel_rect)
+    y = panel_rect.top + 10
     avg_res = np.mean(world.resource) if len(world.resource) > 0 else 0
 
     lines = [
@@ -404,21 +446,26 @@ def draw_simulation(screen, world, font, speed, paused):
         "",
         f"SPEED: {speed}x",
         "",
-        "SPACE - pause",
-        "UP/DOWN - speed",
-        "R - reset (config)",
-        "ESC - quit"
     ]
     for line in lines:
         surf = font.render(line, True, COLOR_TEXT)
-        screen.blit(surf, (WINDOW_WIDTH + 10, y))
+        screen.blit(surf, (panel_rect.left + 10, y))
         y += 24
 
-    # График популяции
+    button_y = y + 10
+    for btn in buttons:
+        btn.rect.x = panel_rect.left + 10
+        btn.rect.y = button_y
+        btn.draw(screen, font)
+        button_y += 45
+
     if len(world.pop_hist) > 5:
-        gx, gy = WINDOW_WIDTH + 10, y + 10
-        gw, gh = INFO_PANEL_WIDTH - 20, 100
-        pygame.draw.rect(screen, (20, 20, 30), (gx, gy, gw, gh))
+        gx = panel_rect.left + 10
+        gy = button_y + 10
+        gw = panel_rect.width - 20
+        gh = 100
+        pygame.draw.rect(screen, COLOR_BACKGROUND, (gx, gy, gw, gh))
+        pygame.draw.rect(screen, COLOR_OUTLINE, (gx, gy, gw, gh), 1)
         max_pop = max(world.pop_hist) if world.pop_hist else 1
         if max_pop == 0:
             max_pop = 1
@@ -430,61 +477,33 @@ def draw_simulation(screen, world, font, speed, paused):
                 py = gy + gh - int(p / max_pop * gh)
                 points.append((px, py))
         if len(points) > 1:
-            pygame.draw.lines(screen, (100, 200, 255), False, points, 2)
+            pygame.draw.lines(screen, (180, 180, 200), False, points, 2)
 
 
-def draw_world(screen, world):
-    for x in range(world.w):
-        for y in range(world.h):
-            val = world.resource[x, y]
-            t = (val - RESOURCE_BASE * 0.2) / (RESOURCE_BASE * 4.0)
-            t = max(0, min(1, t))
-            color = (
-                int(COLOR_RESOURCE_LOW[0] + t * (COLOR_RESOURCE_HIGH[0] - COLOR_RESOURCE_LOW[0])),
-                int(COLOR_RESOURCE_LOW[1] + t * (COLOR_RESOURCE_HIGH[1] - COLOR_RESOURCE_LOW[1])),
-                int(COLOR_RESOURCE_LOW[2] + t * (COLOR_RESOURCE_HIGH[2] - COLOR_RESOURCE_LOW[2]))
-            )
-            pygame.draw.rect(screen, color, (x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE))
-
-    for f in world.families:
-        rect = (f.x*CELL_SIZE, f.y*CELL_SIZE, CELL_SIZE, CELL_SIZE)
-        pygame.draw.rect(screen, f.get_color(), rect)
-        pygame.draw.rect(screen, COLOR_OUTLINE, rect, 2)
-        if f.capital > 600:
-            center = (f.x*CELL_SIZE + CELL_SIZE//2, f.y*CELL_SIZE + CELL_SIZE//2)
-            pygame.draw.circle(screen, (255, 255, 200), center, 3)
-
-
-# ====================== ГЛАВНАЯ ФУНКЦИЯ ======================
 def main():
     pygame.init()
-    global WINDOW_WIDTH, WINDOW_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
-
-    # Временные размеры
-    WINDOW_WIDTH = 800
-    WINDOW_HEIGHT = 600
-    SCREEN_WIDTH = WINDOW_WIDTH + INFO_PANEL_WIDTH
-    SCREEN_HEIGHT = WINDOW_HEIGHT
-
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
+    screen = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
     pygame.display.set_caption("Family Simulation")
     clock = pygame.time.Clock()
     font = pygame.font.SysFont('Arial', 14)
 
-    # При первом запуске показать меню
     menu = ConfigMenu(screen, font)
     params = menu.run()
 
-    # Применить параметры
     WORLD_WIDTH = params['world_width']
     WORLD_HEIGHT = params['world_height']
-    WINDOW_WIDTH = WORLD_WIDTH * CELL_SIZE
-    WINDOW_HEIGHT = WORLD_HEIGHT * CELL_SIZE
-    SCREEN_WIDTH = WINDOW_WIDTH + INFO_PANEL_WIDTH
-    SCREEN_HEIGHT = WINDOW_HEIGHT
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
+    INFO_PANEL_WIDTH = 260
 
-    # Создать мир
+    def get_offsets_and_panel(screen_rect):
+        field_w = WORLD_WIDTH * CELL_SIZE
+        field_h = WORLD_HEIGHT * CELL_SIZE
+        panel_rect = pygame.Rect(screen_rect.right - INFO_PANEL_WIDTH, screen_rect.top,
+                                 INFO_PANEL_WIDTH, screen_rect.height)
+        available_width = screen_rect.width - INFO_PANEL_WIDTH
+        offset_x = (available_width - field_w) // 2
+        offset_y = (screen_rect.height - field_h) // 2
+        return offset_x, offset_y, panel_rect
+
     config = {
         'r_bar': params['r_bar'],
         'r_hat': params['r_hat'],
@@ -497,50 +516,64 @@ def main():
     speed = 1
     running = True
 
+    def toggle_pause():
+        nonlocal paused
+        paused = not paused
+
+    def reset_with_menu():
+        nonlocal world, screen, paused, WORLD_WIDTH, WORLD_HEIGHT
+        menu.params = {
+            'num_families': world.num_families,
+            'r_bar': world.config['r_bar'],
+            'r_hat': world.config['r_hat'],
+            'max_vision': world.config['max_vision'],
+            'crisis_period': world.config['crisis_period'],
+            'world_width': world.w,
+            'world_height': world.h
+        }
+        menu.running = True
+        menu.selected_index = None
+        menu.editing = False
+        new_params = menu.run()
+        if new_params:
+            WORLD_WIDTH = new_params['world_width']
+            WORLD_HEIGHT = new_params['world_height']
+            config = {
+                'r_bar': new_params['r_bar'],
+                'r_hat': new_params['r_hat'],
+                'max_vision': new_params['max_vision'],
+                'crisis_period': new_params['crisis_period']
+            }
+            world = World(WORLD_WIDTH, WORLD_HEIGHT, new_params['num_families'], config)
+            paused = False
+
+    buttons = [
+        Button(0, 0, INFO_PANEL_WIDTH - 20, 35, "Pause / Resume (Space)", toggle_pause),
+        Button(0, 0, INFO_PANEL_WIDTH - 20, 35, "Reset / Configure (R)", reset_with_menu),
+    ]
+
     while running:
+        screen_rect = screen.get_rect()
+        offset_x, offset_y, panel_rect = get_offsets_and_panel(screen_rect)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.VIDEORESIZE:
+                screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
                 elif event.key == pygame.K_SPACE:
-                    paused = not paused
+                    toggle_pause()
                 elif event.key == pygame.K_UP:
                     speed = min(10, speed + 1)
                 elif event.key == pygame.K_DOWN:
                     speed = max(1, speed - 1)
                 elif event.key == pygame.K_r:
-                    # Показать меню с текущими параметрами
-                    menu.params = {
-                        'num_families': world.num_families,
-                        'r_bar': world.config['r_bar'],
-                        'r_hat': world.config['r_hat'],
-                        'max_vision': world.config['max_vision'],
-                        'crisis_period': world.config['crisis_period'],
-                        'world_width': world.w,
-                        'world_height': world.h
-                    }
-                    menu.running = True
-                    menu.selected_index = 0
-                    menu.editing = False
-                    new_params = menu.run()
-                    if new_params:
-                        WORLD_WIDTH = new_params['world_width']
-                        WORLD_HEIGHT = new_params['world_height']
-                        WINDOW_WIDTH = WORLD_WIDTH * CELL_SIZE
-                        WINDOW_HEIGHT = WORLD_HEIGHT * CELL_SIZE
-                        SCREEN_WIDTH = WINDOW_WIDTH + INFO_PANEL_WIDTH
-                        SCREEN_HEIGHT = WINDOW_HEIGHT
-                        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
-                        config = {
-                            'r_bar': new_params['r_bar'],
-                            'r_hat': new_params['r_hat'],
-                            'max_vision': new_params['max_vision'],
-                            'crisis_period': new_params['crisis_period']
-                        }
-                        world = World(WORLD_WIDTH, WORLD_HEIGHT, new_params['num_families'], config)
-                        paused = False
+                    reset_with_menu()
+            for btn in buttons:
+                btn.handle_event(event)
 
         if not paused:
             for _ in range(speed):
@@ -548,8 +581,9 @@ def main():
                 if world.get_pop() == 0 and world.time > 100:
                     paused = True
 
-        draw_world(screen, world)
-        draw_simulation(screen, world, font, speed, paused)
+        screen.fill(COLOR_BACKGROUND)
+        draw_world(screen, world, offset_x, offset_y)
+        draw_simulation(screen, world, font, speed, paused, buttons, panel_rect)
         pygame.display.flip()
         clock.tick(60)
 
