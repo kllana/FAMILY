@@ -5,6 +5,7 @@ import pygame
 import numpy as np
 import random
 from collections import deque
+import matplotlib.pyplot as plt
 
 # ====================== ФИКСИРОВАННЫЕ ПАРАМЕТРЫ ======================
 MALE_INCOME_BASE = 5.0
@@ -40,7 +41,7 @@ RESOURCE_DIFFUSION = 0.1
 
 MOVE_PROB = 0.3
 CELL_SIZE = 18
-INFO_PANEL_WIDTH = 260
+INFO_PANEL_WIDTH = 280
 R_MAX = 1000.0
 
 # ====================== ЦВЕТА ======================
@@ -147,6 +148,7 @@ class World:
         self.pop_hist = deque(maxlen=2000)
         self.cap_hist = deque(maxlen=2000)
         self.work_hist = deque(maxlen=2000)
+        self.expenditure_hist = deque(maxlen=2000)
 
     def is_cell_free(self, x, y, exclude=None):
         for f in self.families:
@@ -251,13 +253,16 @@ class World:
         if pop > 0:
             avg_cap = np.mean([f.capital for f in self.families])
             work_ratio = sum(1 for f in self.families if f.woman_works) / pop
+            avg_expenditure = np.mean([f.expenditure_rate for f in self.families])
         else:
             avg_cap = 0
             work_ratio = 0
+            avg_expenditure = 0
 
         self.pop_hist.append(pop)
         self.cap_hist.append(avg_cap)
         self.work_hist.append(work_ratio)
+        self.expenditure_hist.append(avg_expenditure)
 
     def get_pop(self):
         return len(self.families)
@@ -277,13 +282,13 @@ class ConfigMenu:
             'world_height': 30
         }
         self.param_names = [
-            "Number of families (int)",
-            "Crisis threshold R_BAR (float)",
-            "Acute crisis R_HAT (float)",
-            "Max vision radius (int)",
-            "Crisis period steps (int)",
-            "World width (int)",
-            "World height (int)"
+            "Количество семей (numFamily)",
+            "Граница экономического кризиса для семьи (boardRet)",
+            "Кризисная граница толерантности (boardSog)",
+            "Максимальный радиус видимости (maxVision)",
+            "Периодичность смены кризиса (cris)",
+            "Ширина поля (worldXSize)",
+            "Высота поля (worldYSize)"
         ]
         self.param_keys = ['num_families', 'r_bar', 'r_hat', 'max_vision', 'crisis_period', 'world_width', 'world_height']
         self.param_rects = []
@@ -294,7 +299,7 @@ class ConfigMenu:
 
     def draw(self):
         self.screen.fill(COLOR_MENU_BG)
-        title = self.font.render("Configure Simulation - Click on a parameter, then type new value", True, COLOR_TEXT)
+        title = self.font.render("Настройка параметров модели — кликните по параметру и введите новое значение", True, COLOR_TEXT)
         self.screen.blit(title, (50, 20))
 
         y = 80
@@ -310,18 +315,17 @@ class ConfigMenu:
             y += 35
 
         if self.editing:
-            edit_text = self.font.render(f"Type new value: {self.edit_buffer}_ (press ENTER to save, ESC to cancel)", True, COLOR_TEXT)
+            edit_text = self.font.render(f"Введите новое значение: {self.edit_buffer}_ (ENTER — сохранить, ESC — отмена)", True, COLOR_TEXT)
             edit_rect = edit_text.get_rect(topleft=(50, y))
             pygame.draw.rect(self.screen, COLOR_INPUT_BG, edit_rect.inflate(10, 5))
             self.screen.blit(edit_text, edit_rect)
 
-        # Кнопка START
-        start_rect = pygame.Rect(50, y + 50, 200, 40)
+        start_rect = pygame.Rect(50, y + 50, 220, 40)
         mouse_pos = pygame.mouse.get_pos()
         color_start = COLOR_START_HOVER if start_rect.collidepoint(mouse_pos) else COLOR_START_BUTTON
         pygame.draw.rect(self.screen, color_start, start_rect)
         pygame.draw.rect(self.screen, COLOR_TEXT, start_rect, 2)
-        start_text = self.font.render("START SIMULATION", True, COLOR_TEXT)
+        start_text = self.font.render("ЗАПУСТИТЬ СИМУЛЯЦИЮ", True, COLOR_TEXT)
         start_text_rect = start_text.get_rect(center=start_rect.center)
         self.screen.blit(start_text, start_text_rect)
         self.start_button_rect = start_rect
@@ -402,6 +406,58 @@ class Button:
                 self.action()
 
 
+def show_statistics(world):
+    """Открывает окно с графиками (гистограмма по идентичности женщин)."""
+    time_data = list(range(len(world.pop_hist)))
+    pop_data = list(world.pop_hist)
+    capital_data = list(world.cap_hist)
+    expenditure_data = list(world.expenditure_hist)
+
+    # Текущее распределение по идентичности
+    if world.families:
+        working = sum(1 for f in world.families if f.woman_works)
+        non_working = len(world.families) - working
+        categories = ['Работающие женщины', 'Неработающие женщины']
+        values = [working, non_working]
+    else:
+        categories = ['Нет семей']
+        values = [0]
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    fig.suptitle('Статистика модели семьи', fontsize=14)
+
+    axes[0, 0].plot(time_data, pop_data, color='blue')
+    axes[0, 0].set_title('Изменение количества семей во времени')
+    axes[0, 0].set_xlabel('Шаг времени')
+    axes[0, 0].set_ylabel('Число семей')
+    axes[0, 0].grid(True)
+
+    axes[0, 1].plot(time_data, capital_data, color='green')
+    axes[0, 1].set_title('Динамика среднего капитала семьи')
+    axes[0, 1].set_xlabel('Шаг времени')
+    axes[0, 1].set_ylabel('Капитал')
+    axes[0, 1].grid(True)
+
+    axes[1, 0].plot(time_data, expenditure_data, color='red')
+    axes[1, 0].set_title('Изменение коэффициента расхода капитала')
+    axes[1, 0].set_xlabel('Шаг времени')
+    axes[1, 0].set_ylabel('Коэффициент расхода (γ)')
+    axes[1, 0].grid(True)
+
+    bars = axes[1, 1].bar(categories, values, color=['#4CAF50', '#FF9800'])
+    axes[1, 1].set_title('Соотношение семей по идентичности женщин (текущее)')
+    axes[1, 1].set_ylabel('Количество семей')
+    axes[1, 1].set_ylim(0, max(values) * 1.2 if values else 1)
+
+    for bar, val in zip(bars, values):
+        if val > 0:
+            axes[1, 1].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
+                            str(val), ha='center', va='bottom', fontsize=10)
+
+    plt.tight_layout()
+    plt.show(block=True)
+
+
 def draw_world(screen, world, offset_x, offset_y):
     for x in range(world.w):
         for y in range(world.h):
@@ -430,21 +486,21 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect):
     avg_res = np.mean(world.resource) if len(world.resource) > 0 else 0
 
     lines = [
-        f"TIME: {world.time}",
-        f"POPULATION: {world.get_pop()}",
-        f"PHASE: {world.global_phase}",
-        f"AVG RESOURCE: {avg_res:.1f}",
-        f"AVG CAPITAL: {world.cap_hist[-1] if world.cap_hist else 0:.0f}",
-        f"WORKING WOMEN: {int(world.work_hist[-1]*100) if world.work_hist else 0}%",
+        f"ВРЕМЯ: {world.time}",
+        f"ЧИСЛЕННОСТЬ СЕМЕЙ: {world.get_pop()}",
+        f"ФАЗА: {'ПОДЪЁМ' if world.global_phase == 'BOOM' else 'КРИЗИС'}",
+        f"СРЕДНИЙ РЕСУРС: {avg_res:.1f}",
+        f"СРЕДНИЙ КАПИТАЛ: {world.cap_hist[-1] if world.cap_hist else 0:.0f}",
+        f"РАБОТАЮЩИЕ ЖЕНЩИНЫ: {int(world.work_hist[-1]*100) if world.work_hist else 0}%",
         "",
-        f"FIELD: {world.w}×{world.h}",
-        f"FAMILIES: {world.num_families}",
-        f"R_BAR: {world.config['r_bar']:.0f}",
-        f"R_HAT: {world.config['r_hat']:.0f}",
-        f"VISION: {world.config['max_vision']}",
-        f"CRISIS PERIOD: {world.config['crisis_period']}",
+        f"ПОЛЕ: {world.w}×{world.h}",
+        f"СЕМЕЙ: {world.num_families}",
+        f"boardRet: {world.config['r_bar']:.0f}",
+        f"boardSog: {world.config['r_hat']:.0f}",
+        f"maxVision: {world.config['max_vision']}",
+        f"cris: {world.config['crisis_period']}",
         "",
-        f"SPEED: {speed}x",
+        f"СКОРОСТЬ: {speed}x",
         "",
     ]
     for line in lines:
@@ -483,7 +539,7 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect):
 def main():
     pygame.init()
     screen = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
-    pygame.display.set_caption("Family Simulation")
+    pygame.display.set_caption("Модель выживания семьи — компьютерное моделирование")
     clock = pygame.time.Clock()
     font = pygame.font.SysFont('Arial', 14)
 
@@ -492,7 +548,7 @@ def main():
 
     WORLD_WIDTH = params['world_width']
     WORLD_HEIGHT = params['world_height']
-    INFO_PANEL_WIDTH = 260
+    INFO_PANEL_WIDTH = 280
 
     def get_offsets_and_panel(screen_rect):
         field_w = WORLD_WIDTH * CELL_SIZE
@@ -547,9 +603,18 @@ def main():
             world = World(WORLD_WIDTH, WORLD_HEIGHT, new_params['num_families'], config)
             paused = False
 
+    def show_stats():
+        nonlocal paused
+        was_paused = paused
+        if not was_paused:
+            paused = True
+        show_statistics(world)
+        paused = was_paused
+
     buttons = [
-        Button(0, 0, INFO_PANEL_WIDTH - 20, 35, "Pause / Resume (Space)", toggle_pause),
-        Button(0, 0, INFO_PANEL_WIDTH - 20, 35, "Reset / Configure (R)", reset_with_menu),
+        Button(0, 0, INFO_PANEL_WIDTH - 20, 35, "Пауза / Продолжить (Пробел)", toggle_pause),
+        Button(0, 0, INFO_PANEL_WIDTH - 20, 35, "Сброс / Настройка (R)", reset_with_menu),
+        Button(0, 0, INFO_PANEL_WIDTH - 20, 35, "Показать графики", show_stats),
     ]
 
     while running:
