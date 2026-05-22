@@ -7,13 +7,13 @@ import random
 from collections import deque
 import matplotlib.pyplot as plt
 
-# ====================== ФИКСИРОВАННЫЕ ПАРАМЕТРЫ ======================
+# ====================== ПАРАМЕТРЫ ======================
 MALE_INCOME_BASE = 5.0
 FEMALE_INCOME_BASE = 4.0
-EXPENDITURE_BASE = 0.30              # Увеличен расход, чтобы капитал не рос бесконтрольно
+EXPENDITURE_BASE = 0.80              # Очень высокий расход — капитал растёт слабо
 
-INIT_CAPITAL_MEAN = 400.0
-INIT_CAPITAL_STD = 100.0
+INIT_CAPITAL_MEAN = 190.0            # Чуть выше порога 180 → в начале работающих мало
+INIT_CAPITAL_STD = 80.0
 
 INIT_ADAPT_MEAN = 50.0
 INIT_ADAPT_STD = 15.0
@@ -22,7 +22,7 @@ INIT_TOLERANCE_STD = 15.0
 A_MAX = 100.0
 S_MAX = 100.0
 
-INIT_WORKING_PROB = 0.3
+INIT_WORKING_PROB = 0.05             # 5% работающих в самом начале
 EXPENDITURE_MIN = 0.08
 EXPENDITURE_MAX = 0.28
 
@@ -31,17 +31,18 @@ DEATH_RATE_BASE = 0.015
 CRISIS_DEATH_BONUS = 0.05
 
 CRISIS_PERIOD = 200
-BOOM_FACTOR = 1.5                    # Усилен рост в бум
-CRISIS_FACTOR = 0.2                  # Сильный спад в кризис
+BOOM_FACTOR = 1.03                   # Очень слабый рост в фазе подъёма
+CRISIS_FACTOR = 0.45                 # Глубокий спад в кризис
 
 RESOURCE_BASE = 22.0
-RESOURCE_CONSUMPTION = 2.2
-RESOURCE_RENEWAL = 0.35
+RESOURCE_CONSUMPTION = 4.0           # Высокое потребление ресурса семьями
+RESOURCE_RENEWAL = 0.12              # Очень медленное восстановление ресурса
 RESOURCE_DIFFUSION = 0.1
 
 MOVE_PROB = 0.3
 INFO_PANEL_WIDTH = 280
-R_MAX = 1000.0
+R_MAX = 200.0                        # Порог увольнения: при капитале >200 женщина может уволиться
+PROB_QUIT_JOB = 0.08                 # Вероятность увольнения в каждом шаге (было 0.02)
 
 # ====================== ЦВЕТА ======================
 COLOR_RESOURCE_LOW = (0, 0, 80)
@@ -94,8 +95,8 @@ class Family:
         an = self.adaptation / A_MAX
         sn = self.tolerance / S_MAX
 
-        # Стратегия 1: поиск более богатого источника дохода (женщина выходит на работу)
-        if self.capital < an * self.config['boardRet']:
+        # Стратегия 1: выход женщины на работу (капитал ниже boardRet)
+        if self.capital < self.config['boardRet']:
             if self.woman_works == 0:
                 self.woman_works = 1
                 self.female_income = FEMALE_INCOME_BASE
@@ -103,9 +104,9 @@ class Family:
         # Стратегия 2: снижение расходов
         elif self.capital < sn * an * self.config['boardRet']:
             self.expenditure_rate = max(EXPENDITURE_MIN, self.expenditure_rate * 0.97)
-        # Стратегия 4: увеличение расходов, женщина может оставить работу
+        # Стратегия 4: увольнение женщины при высоком капитале (с повышенной вероятностью)
         elif self.capital > sn * an * R_MAX:
-            if self.woman_works == 1 and random.random() < 0.02:
+            if self.woman_works == 1 and random.random() < PROB_QUIT_JOB:
                 self.woman_works = 0
                 self.female_income = 0.0
             self.expenditure_rate = min(EXPENDITURE_MAX, self.expenditure_rate * 1.02)
@@ -118,7 +119,7 @@ class Family:
 
         self.capital = min(self.capital, R_MAX * 2)
 
-        # Изменение адаптивности и толерантности со временем
+        # Изменение адаптивности и толерантности
         if self.capital < self.config['boardRet']:
             self.adaptation = min(A_MAX, self.adaptation + 0.3)
             self.tolerance = max(20.0, self.tolerance - 0.15)
@@ -280,7 +281,7 @@ class ConfigMenu:
     def __init__(self, screen, font):
         self.screen = screen
         self.font = font
-        # Книжные параметры: boardRet=180, boardSog=60 (средний капитал ~300-400)
+        # Книжные параметры: boardRet = 180, boardSog = 60
         self.params = {
             'numFamily': 50,
             'boardRet': 180.0,
