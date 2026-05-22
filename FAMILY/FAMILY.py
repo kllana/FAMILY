@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 # ====================== ФИКСИРОВАННЫЕ ПАРАМЕТРЫ ======================
 MALE_INCOME_BASE = 5.0
 FEMALE_INCOME_BASE = 4.0
-EXPENDITURE_BASE = 0.18
+EXPENDITURE_BASE = 0.30              # Увеличен расход, чтобы капитал не рос бесконтрольно
 
 INIT_CAPITAL_MEAN = 400.0
 INIT_CAPITAL_STD = 100.0
@@ -31,8 +31,8 @@ DEATH_RATE_BASE = 0.015
 CRISIS_DEATH_BONUS = 0.05
 
 CRISIS_PERIOD = 200
-BOOM_FACTOR = 1.4
-CRISIS_FACTOR = 0.4
+BOOM_FACTOR = 1.5                    # Усилен рост в бум
+CRISIS_FACTOR = 0.2                  # Сильный спад в кризис
 
 RESOURCE_BASE = 22.0
 RESOURCE_CONSUMPTION = 2.2
@@ -40,7 +40,6 @@ RESOURCE_RENEWAL = 0.35
 RESOURCE_DIFFUSION = 0.1
 
 MOVE_PROB = 0.3
-CELL_SIZE = 18
 INFO_PANEL_WIDTH = 280
 R_MAX = 1000.0
 
@@ -64,6 +63,10 @@ COLOR_START_HOVER = (50, 160, 50)
 
 
 class Family:
+    __slots__ = ('id', 'x', 'y', 'capital', 'adaptation', 'tolerance', 
+                 'woman_works', 'male_income', 'female_income', 
+                 'expenditure_rate', 'alive', 'config')
+    
     def __init__(self, x, y, fid, config):
         self.id = fid
         self.x = x
@@ -91,27 +94,32 @@ class Family:
         an = self.adaptation / A_MAX
         sn = self.tolerance / S_MAX
 
-        if self.capital < an * self.config['r_bar']:
+        # Стратегия 1: поиск более богатого источника дохода (женщина выходит на работу)
+        if self.capital < an * self.config['boardRet']:
             if self.woman_works == 0:
                 self.woman_works = 1
                 self.female_income = FEMALE_INCOME_BASE
                 self.adaptation = min(A_MAX, self.adaptation + 2)
-        elif self.capital < sn * an * self.config['r_bar']:
+        # Стратегия 2: снижение расходов
+        elif self.capital < sn * an * self.config['boardRet']:
             self.expenditure_rate = max(EXPENDITURE_MIN, self.expenditure_rate * 0.97)
+        # Стратегия 4: увеличение расходов, женщина может оставить работу
         elif self.capital > sn * an * R_MAX:
             if self.woman_works == 1 and random.random() < 0.02:
                 self.woman_works = 0
                 self.female_income = 0.0
             self.expenditure_rate = min(EXPENDITURE_MAX, self.expenditure_rate * 1.02)
 
-        if self.capital < self.config['r_hat']:
+        # Стратегия 5: острый кризис – возможен распад семьи
+        if self.capital < self.config['boardSog']:
             if random.random() < 0.12:
                 self.alive = False
                 return
 
         self.capital = min(self.capital, R_MAX * 2)
 
-        if self.capital < self.config['r_bar']:
+        # Изменение адаптивности и толерантности со временем
+        if self.capital < self.config['boardRet']:
             self.adaptation = min(A_MAX, self.adaptation + 0.3)
             self.tolerance = max(20.0, self.tolerance - 0.15)
         else:
@@ -186,13 +194,13 @@ class World:
         self.resource -= consumption
         self.resource += RESOURCE_RENEWAL * (RESOURCE_BASE - self.resource) / 10.0
 
+        # Векторизованная диффузия
         diffused = self.resource.copy()
-        for i in range(1, self.w-1):
-            for j in range(1, self.h-1):
-                neighbors = [self.resource[i-1, j], self.resource[i+1, j],
-                             self.resource[i, j-1], self.resource[i, j+1]]
-                avg = np.mean(neighbors)
-                diffused[i, j] += RESOURCE_DIFFUSION * (avg - self.resource[i, j])
+        diffused[1:-1, 1:-1] += RESOURCE_DIFFUSION * (
+            (self.resource[0:-2, 1:-1] + self.resource[2:, 1:-1] +
+             self.resource[1:-1, 0:-2] + self.resource[1:-1, 2:]) / 4.0 -
+            self.resource[1:-1, 1:-1]
+        )
         self.resource = diffused
         self.resource = np.clip(self.resource, RESOURCE_BASE * 0.1, RESOURCE_BASE * 3.0)
 
@@ -208,7 +216,7 @@ class World:
 
         if self.time >= self.next_phase_change:
             self.global_phase = 'CRISIS' if self.global_phase == 'BOOM' else 'BOOM'
-            self.next_phase_change = self.time + CRISIS_PERIOD
+            self.next_phase_change = self.time + self.config['cris']
             self.apply_global_phase()
 
         self.update_resource_local()
@@ -217,7 +225,7 @@ class World:
             if not f.alive:
                 continue
             if random.random() < MOVE_PROB:
-                dx, dy = self.get_best_neighbor(f.x, f.y, self.config['max_vision'], f)
+                dx, dy = self.get_best_neighbor(f.x, f.y, self.config['maxVision'], f)
                 if dx != 0 or dy != 0:
                     f.x += dx
                     f.y += dy
@@ -272,25 +280,28 @@ class ConfigMenu:
     def __init__(self, screen, font):
         self.screen = screen
         self.font = font
+        # Книжные параметры: boardRet=180, boardSog=60 (средний капитал ~300-400)
         self.params = {
-            'num_families': 40,
-            'r_bar': 180.0,
-            'r_hat': 60.0,
-            'max_vision': 4,
-            'crisis_period': 200,
-            'world_width': 40,
-            'world_height': 30
+            'numFamily': 50,
+            'boardRet': 180.0,
+            'boardSog': 60.0,
+            'boardAdapt': 100.0,
+            'maxVision': 1,
+            'cris': 400,
+            'worldXSize': 85,
+            'worldYSize': 85
         }
         self.param_names = [
             "Количество семей (numFamily)",
             "Граница экономического кризиса для семьи (boardRet)",
             "Кризисная граница толерантности (boardSog)",
+            "Кризисная граница адаптивности (boardAdapt)",
             "Максимальный радиус видимости (maxVision)",
             "Периодичность смены кризиса (cris)",
             "Ширина поля (worldXSize)",
             "Высота поля (worldYSize)"
         ]
-        self.param_keys = ['num_families', 'r_bar', 'r_hat', 'max_vision', 'crisis_period', 'world_width', 'world_height']
+        self.param_keys = ['numFamily', 'boardRet', 'boardSog', 'boardAdapt', 'maxVision', 'cris', 'worldXSize', 'worldYSize']
         self.param_rects = []
         self.selected_index = None
         self.editing = False
@@ -348,7 +359,7 @@ class ConfigMenu:
             if event.key == pygame.K_RETURN:
                 try:
                     key = self.param_keys[self.selected_index]
-                    if key in ['num_families', 'max_vision', 'crisis_period', 'world_width', 'world_height']:
+                    if key in ['numFamily', 'maxVision', 'cris', 'worldXSize', 'worldYSize']:
                         val = int(self.edit_buffer)
                     else:
                         val = float(self.edit_buffer)
@@ -407,13 +418,11 @@ class Button:
 
 
 def show_statistics(world):
-    """Открывает окно с графиками (гистограмма по идентичности женщин)."""
     time_data = list(range(len(world.pop_hist)))
     pop_data = list(world.pop_hist)
     capital_data = list(world.cap_hist)
     expenditure_data = list(world.expenditure_hist)
 
-    # Текущее распределение по идентичности
     if world.families:
         working = sum(1 for f in world.families if f.woman_works)
         non_working = len(world.families) - working
@@ -458,7 +467,8 @@ def show_statistics(world):
     plt.show(block=True)
 
 
-def draw_world(screen, world, offset_x, offset_y):
+def draw_world(screen, world, offset_x, offset_y, cell_size):
+    # Отрисовка ресурса
     for x in range(world.w):
         for y in range(world.h):
             val = world.resource[x, y]
@@ -469,15 +479,17 @@ def draw_world(screen, world, offset_x, offset_y):
                 int(COLOR_RESOURCE_LOW[1] + t * (COLOR_RESOURCE_HIGH[1] - COLOR_RESOURCE_LOW[1])),
                 int(COLOR_RESOURCE_LOW[2] + t * (COLOR_RESOURCE_HIGH[2] - COLOR_RESOURCE_LOW[2]))
             )
-            rect = pygame.Rect(offset_x + x * CELL_SIZE, offset_y + y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+            rect = pygame.Rect(offset_x + x * cell_size, offset_y + y * cell_size, cell_size, cell_size)
             pygame.draw.rect(screen, color, rect)
+
+    # Отрисовка семей
     for f in world.families:
-        rect = pygame.Rect(offset_x + f.x * CELL_SIZE, offset_y + f.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+        rect = pygame.Rect(offset_x + f.x * cell_size, offset_y + f.y * cell_size, cell_size, cell_size)
         pygame.draw.rect(screen, f.get_color(), rect)
         pygame.draw.rect(screen, COLOR_OUTLINE, rect, 2)
         if f.capital > 600:
             center = (rect.centerx, rect.centery)
-            pygame.draw.circle(screen, (255, 255, 200), center, 3)
+            pygame.draw.circle(screen, (255, 255, 200), center, max(2, cell_size // 4))
 
 
 def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect):
@@ -495,10 +507,10 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect):
         "",
         f"ПОЛЕ: {world.w}×{world.h}",
         f"СЕМЕЙ: {world.num_families}",
-        f"boardRet: {world.config['r_bar']:.0f}",
-        f"boardSog: {world.config['r_hat']:.0f}",
-        f"maxVision: {world.config['max_vision']}",
-        f"cris: {world.config['crisis_period']}",
+        f"boardRet: {world.config['boardRet']:.0f}",
+        f"boardSog: {world.config['boardSog']:.0f}",
+        f"maxVision: {world.config['maxVision']}",
+        f"cris: {world.config['cris']}",
         "",
         f"СКОРОСТЬ: {speed}x",
         "",
@@ -538,7 +550,7 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect):
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
+    screen = pygame.display.set_mode((1200, 800), pygame.RESIZABLE)
     pygame.display.set_caption("Модель выживания семьи — компьютерное моделирование")
     clock = pygame.time.Clock()
     font = pygame.font.SysFont('Arial', 14)
@@ -546,27 +558,33 @@ def main():
     menu = ConfigMenu(screen, font)
     params = menu.run()
 
-    WORLD_WIDTH = params['world_width']
-    WORLD_HEIGHT = params['world_height']
+    WORLD_WIDTH = params['worldXSize']
+    WORLD_HEIGHT = params['worldYSize']
     INFO_PANEL_WIDTH = 280
 
-    def get_offsets_and_panel(screen_rect):
-        field_w = WORLD_WIDTH * CELL_SIZE
-        field_h = WORLD_HEIGHT * CELL_SIZE
+    def get_offsets_and_panel(screen_rect, w, h):
         panel_rect = pygame.Rect(screen_rect.right - INFO_PANEL_WIDTH, screen_rect.top,
                                  INFO_PANEL_WIDTH, screen_rect.height)
         available_width = screen_rect.width - INFO_PANEL_WIDTH
+        available_height = screen_rect.height
+        cell_size_x = available_width // w if w > 0 else 8
+        cell_size_y = available_height // h if h > 0 else 8
+        cell_size = min(cell_size_x, cell_size_y)
+        if cell_size < 2:
+            cell_size = 2
+        field_w = w * cell_size
+        field_h = h * cell_size
         offset_x = (available_width - field_w) // 2
-        offset_y = (screen_rect.height - field_h) // 2
-        return offset_x, offset_y, panel_rect
+        offset_y = (available_height - field_h) // 2
+        return offset_x, offset_y, panel_rect, cell_size
 
     config = {
-        'r_bar': params['r_bar'],
-        'r_hat': params['r_hat'],
-        'max_vision': params['max_vision'],
-        'crisis_period': params['crisis_period']
+        'boardRet': params['boardRet'],
+        'boardSog': params['boardSog'],
+        'maxVision': params['maxVision'],
+        'cris': params['cris']
     }
-    world = World(WORLD_WIDTH, WORLD_HEIGHT, params['num_families'], config)
+    world = World(WORLD_WIDTH, WORLD_HEIGHT, params['numFamily'], config)
 
     paused = False
     speed = 1
@@ -579,28 +597,29 @@ def main():
     def reset_with_menu():
         nonlocal world, screen, paused, WORLD_WIDTH, WORLD_HEIGHT
         menu.params = {
-            'num_families': world.num_families,
-            'r_bar': world.config['r_bar'],
-            'r_hat': world.config['r_hat'],
-            'max_vision': world.config['max_vision'],
-            'crisis_period': world.config['crisis_period'],
-            'world_width': world.w,
-            'world_height': world.h
+            'numFamily': world.num_families,
+            'boardRet': world.config['boardRet'],
+            'boardSog': world.config['boardSog'],
+            'boardAdapt': 100.0,
+            'maxVision': world.config['maxVision'],
+            'cris': world.config['cris'],
+            'worldXSize': world.w,
+            'worldYSize': world.h
         }
         menu.running = True
         menu.selected_index = None
         menu.editing = False
         new_params = menu.run()
         if new_params:
-            WORLD_WIDTH = new_params['world_width']
-            WORLD_HEIGHT = new_params['world_height']
+            WORLD_WIDTH = new_params['worldXSize']
+            WORLD_HEIGHT = new_params['worldYSize']
             config = {
-                'r_bar': new_params['r_bar'],
-                'r_hat': new_params['r_hat'],
-                'max_vision': new_params['max_vision'],
-                'crisis_period': new_params['crisis_period']
+                'boardRet': new_params['boardRet'],
+                'boardSog': new_params['boardSog'],
+                'maxVision': new_params['maxVision'],
+                'cris': new_params['cris']
             }
-            world = World(WORLD_WIDTH, WORLD_HEIGHT, new_params['num_families'], config)
+            world = World(WORLD_WIDTH, WORLD_HEIGHT, new_params['numFamily'], config)
             paused = False
 
     def show_stats():
@@ -619,7 +638,7 @@ def main():
 
     while running:
         screen_rect = screen.get_rect()
-        offset_x, offset_y, panel_rect = get_offsets_and_panel(screen_rect)
+        offset_x, offset_y, panel_rect, cell_size = get_offsets_and_panel(screen_rect, WORLD_WIDTH, WORLD_HEIGHT)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -647,7 +666,7 @@ def main():
                     paused = True
 
         screen.fill(COLOR_BACKGROUND)
-        draw_world(screen, world, offset_x, offset_y)
+        draw_world(screen, world, offset_x, offset_y, cell_size)
         draw_simulation(screen, world, font, speed, paused, buttons, panel_rect)
         pygame.display.flip()
         clock.tick(60)
