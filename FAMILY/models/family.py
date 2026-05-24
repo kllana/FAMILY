@@ -7,24 +7,40 @@ from config import (
     INIT_ADAPT_MEAN, INIT_ADAPT_STD, INIT_TOLERANCE_MEAN, INIT_TOLERANCE_STD
 )
 
+
 class Woman:
     def __init__(self):
         self.works = False
         self.income = 0.0
 
     def update(self, family_capital, adaptation, is_crisis):
+        # ========== ВЫХОД НА РАБОТУ (только в кризис) ==========
         if not self.works:
+            # В кризисе и капитал упал ниже порога → работаем
             if is_crisis and family_capital < adaptation * BOARD_RET:
                 self.works = True
                 self.income = FEMALE_INCOME_BASE
+            # Острый кризис (капитал очень низкий) → работаем в любом случае
             elif family_capital < BOARD_SOG:
                 self.works = True
                 self.income = FEMALE_INCOME_BASE
+        
+        # ========== УВОЛЬНЕНИЕ (только в подъём) ==========
         else:
-            if not is_crisis and family_capital > adaptation * BOARD_RET * 5:
-                if random.random() < 0.02:
+            # В подъём и капитал нормализовался
+            if not is_crisis:
+                # Чем выше капитал, тем выше шанс уволиться
+                # При капитале = 300 → ~60% шанс, при 500 → 90%
+                if family_capital > adaptation * BOARD_RET:
+                    prob = min(0.95, (family_capital - adaptation * BOARD_RET) / 300)
+                    if random.random() < prob:
+                        self.works = False
+                        self.income = 0.0
+                # Даже если капитал не очень высок, всё равно есть маленький шанс уволиться
+                elif random.random() < 0.05:
                     self.works = False
                     self.income = 0.0
+        
         return self.income
 
 

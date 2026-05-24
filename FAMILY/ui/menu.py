@@ -6,10 +6,11 @@ from colors import (
 )
 
 class ConfigMenu:
-    def __init__(self, screen, font, current_params):
+    def __init__(self, screen, font, current_params, background_surface=None):
         self.screen = screen
         self.font = font
         self.params = current_params.copy()
+        self.background_surface = background_surface
         self.param_names = [
             "Количество семей (numFamily)",
             "Граница экономического кризиса для семьи (boardRet)",
@@ -28,10 +29,20 @@ class ConfigMenu:
         self.running = True
         self.result = None
 
+    def draw_background(self):
+        if self.background_surface is not None:
+            # Рисуем сохранённый фон
+            self.screen.blit(self.background_surface, (0, 0))
+            # Затемняем его
+            overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))   # полупрозрачный чёрный
+            self.screen.blit(overlay, (0, 0))
+        else:
+            # fallback — просто тёмный фон
+            self.screen.fill(COLOR_MENU_BG)
+
     def draw(self):
-        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
-        self.screen.blit(overlay, (0, 0))
+        self.draw_background()
         menu_w = 500
         menu_h = 520
         menu_x = (self.screen.get_width() - menu_w) // 2

@@ -9,6 +9,10 @@ from models import World
 from ui import ConfigMenu, ModernButton, Slider, draw_world, draw_simulation
 from statistics import show_statistics
 
+def capture_background(screen):
+    """Сохраняет текущее содержимое экрана как поверхность для фона меню"""
+    return screen.copy()
+
 def main():
     global NUM_FAMILIES, BOARD_RET, BOARD_SOG, BOARD_ADAPT, MAX_VISION, CRIS_PERIOD, WORLD_WIDTH, WORLD_HEIGHT
     
@@ -29,7 +33,7 @@ def main():
         'worldYSize': WORLD_HEIGHT
     }
 
-    # Временный мир для фона
+    # Временный мир для красивого фона перед меню
     temp_world = World(WORLD_WIDTH, WORLD_HEIGHT, NUM_FAMILIES, MAX_VISION)
     screen_rect = screen.get_rect()
     
@@ -50,7 +54,9 @@ def main():
     draw_world(screen, temp_world, offset_x, offset_y, cell_size)
     pygame.display.flip()
 
-    menu = ConfigMenu(screen, font, default_params)
+    # Захватываем фон и показываем меню
+    background = capture_background(screen)
+    menu = ConfigMenu(screen, font, default_params, background)
     params = menu.run()
     if params:
         NUM_FAMILIES = params['numFamily']
@@ -61,6 +67,7 @@ def main():
         WORLD_WIDTH = params['worldXSize']
         WORLD_HEIGHT = params['worldYSize']
 
+    # Создаём настоящий мир
     world = World(WORLD_WIDTH, WORLD_HEIGHT, NUM_FAMILIES, MAX_VISION)
     world.config = {
         'boardRet': BOARD_RET,
@@ -90,7 +97,9 @@ def main():
             'worldXSize': WORLD_WIDTH,
             'worldYSize': WORLD_HEIGHT
         }
-        menu = ConfigMenu(screen, font, current)
+        # Захватываем текущий экран как фон для меню
+        bg = capture_background(screen)
+        menu = ConfigMenu(screen, font, current, bg)
         new_params = menu.run()
         if new_params:
             NUM_FAMILIES = new_params['numFamily']

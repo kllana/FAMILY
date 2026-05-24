@@ -1,8 +1,7 @@
 # config.py
-# ====================== ПАРАМЕТРЫ МОДЕЛИ ======================
 NUM_FAMILIES = 50
-BOARD_RET = 180.0
-BOARD_SOG = 60.0
+BOARD_RET = 250.0     # было 180
+BOARD_SOG = 120.0     # было 60 (теперь острый кризис наступает реже)
 BOARD_ADAPT = 100.0
 MAX_VISION = 1
 CRIS_PERIOD = 400
@@ -13,8 +12,9 @@ MALE_INCOME_BASE = 5.0
 FEMALE_INCOME_BASE = 4.0
 EXPENDITURE_BASE = 0.80
 
-INIT_CAPITAL_MEAN = 190.0
-INIT_CAPITAL_STD = 80.0
+INIT_CAPITAL_MEAN = 280.0      # поднимаем, чтобы почти все семьи были выше BOARD_SOG (60)
+INIT_CAPITAL_STD = 120.0       # оставляем разброс, но большинство > 60
+
 INIT_ADAPT_MEAN = 50.0
 INIT_ADAPT_STD = 15.0
 INIT_TOLERANCE_MEAN = 50.0
