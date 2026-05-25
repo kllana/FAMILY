@@ -1,8 +1,15 @@
-# main.py
 import pygame
 from config import (
     NUM_FAMILIES, BOARD_RET, BOARD_SOG, BOARD_ADAPT, MAX_VISION,
-    CRIS_PERIOD, WORLD_WIDTH, WORLD_HEIGHT, CELL_SIZE, INFO_PANEL_WIDTH
+    CRIS_PERIOD, WORLD_WIDTH, WORLD_HEIGHT, CELL_SIZE, INFO_PANEL_WIDTH,
+    MALE_INCOME_BASE, FEMALE_INCOME_BASE, EXPENDITURE_BASE,
+    INIT_CAPITAL_MEAN, INIT_CAPITAL_STD, INIT_ADAPT_MEAN, INIT_ADAPT_STD,
+    INIT_TOLERANCE_MEAN, INIT_TOLERANCE_STD,
+    RESOURCE_BASE, GLOBAL_BOOM_INCREMENT, GLOBAL_CRISIS_DECREMENT,
+    LOCAL_VARIATION_AMPLITUDE, CONSUMPTION_RATE, RENEWAL_RATE, DIFFUSION_RATE,
+    MOVE_PROB, BIRTH_BASE_PROB, BIRTH_BOOM_MULTIPLIER, BIRTH_MIN_CAPITAL,
+    BIRTH_MAX_FAMILIES, EXPENDITURE_MIN, EXPENDITURE_MAX,
+    STEPS_BEFORE_REDUCE_EXPENSES, STEPS_BEFORE_WOMAN_WORK
 )
 from colors import COLOR_BG
 from models import World
@@ -79,6 +86,13 @@ def show_family_info(family, is_crisis):
 
 def main():
     global NUM_FAMILIES, BOARD_RET, BOARD_SOG, BOARD_ADAPT, MAX_VISION, CRIS_PERIOD, WORLD_WIDTH, WORLD_HEIGHT
+    global MALE_INCOME_BASE, FEMALE_INCOME_BASE, EXPENDITURE_BASE
+    global INIT_CAPITAL_MEAN, INIT_CAPITAL_STD, INIT_ADAPT_MEAN, INIT_ADAPT_STD
+    global INIT_TOLERANCE_MEAN, INIT_TOLERANCE_STD
+    global RESOURCE_BASE, GLOBAL_BOOM_INCREMENT, GLOBAL_CRISIS_DECREMENT
+    global LOCAL_VARIATION_AMPLITUDE, CONSUMPTION_RATE, RENEWAL_RATE, DIFFUSION_RATE
+    global MOVE_PROB, BIRTH_BASE_PROB, BIRTH_BOOM_MULTIPLIER, BIRTH_MIN_CAPITAL, BIRTH_MAX_FAMILIES
+    global EXPENDITURE_MIN, EXPENDITURE_MAX, STEPS_BEFORE_REDUCE_EXPENSES, STEPS_BEFORE_WOMAN_WORK
 
     pygame.init()
     screen = pygame.display.set_mode((1200, 800), pygame.RESIZABLE)
@@ -95,16 +109,31 @@ def main():
         'cris': CRIS_PERIOD,
         'worldXSize': WORLD_WIDTH,
         'worldYSize': WORLD_HEIGHT,
-        'maleIncomeBase': 5.0, 'femaleIncomeBase': 4.0, 'expenditureBase': 0.80,
-        'initCapitalMean': 190.0, 'initCapitalStd': 80.0,
-        'initAdaptMean': 50.0, 'initAdaptStd': 15.0,
-        'initToleranceMean': 50.0, 'initToleranceStd': 15.0,
-        'resourceBase': 22.0, 'globalBoomIncrement': 0.15, 'globalCrisisDecrement': -0.20,
-        'localVariationAmplitude': 12.0, 'consumptionRate': 0.5, 'renewalRate': 0.005, 'diffusionRate': 0.03,
-        'moveProb': 0.5, 'birthBaseProb': 0.003, 'birthBoomMultiplier': 4.0,
-        'birthMinCapital': 150.0, 'birthMaxFamilies': 200,
-        'expenditureMin': 0.10, 'expenditureMax': 0.35,
-        'stepsBeforeReduceExpenses': 10, 'stepsBeforeWomanWork': 5
+        'maleIncomeBase': MALE_INCOME_BASE,
+        'femaleIncomeBase': FEMALE_INCOME_BASE,
+        'expenditureBase': EXPENDITURE_BASE,
+        'initCapitalMean': INIT_CAPITAL_MEAN,
+        'initCapitalStd': INIT_CAPITAL_STD,
+        'initAdaptMean': INIT_ADAPT_MEAN,
+        'initAdaptStd': INIT_ADAPT_STD,
+        'initToleranceMean': INIT_TOLERANCE_MEAN,
+        'initToleranceStd': INIT_TOLERANCE_STD,
+        'resourceBase': RESOURCE_BASE,
+        'globalBoomIncrement': GLOBAL_BOOM_INCREMENT,
+        'globalCrisisDecrement': abs(GLOBAL_CRISIS_DECREMENT),
+        'localVariationAmplitude': LOCAL_VARIATION_AMPLITUDE,
+        'consumptionRate': CONSUMPTION_RATE,
+        'renewalRate': RENEWAL_RATE,
+        'diffusionRate': DIFFUSION_RATE,
+        'moveProb': MOVE_PROB,
+        'birthBaseProb': BIRTH_BASE_PROB,
+        'birthBoomMultiplier': BIRTH_BOOM_MULTIPLIER,
+        'birthMinCapital': BIRTH_MIN_CAPITAL,
+        'birthMaxFamilies': BIRTH_MAX_FAMILIES,
+        'expenditureMin': EXPENDITURE_MIN,
+        'expenditureMax': EXPENDITURE_MAX,
+        'stepsBeforeReduceExpenses': STEPS_BEFORE_REDUCE_EXPENSES,
+        'stepsBeforeWomanWork': STEPS_BEFORE_WOMAN_WORK
     }
 
     temp_world = World(WORLD_WIDTH, WORLD_HEIGHT, NUM_FAMILIES, MAX_VISION)
@@ -136,10 +165,37 @@ def main():
         NUM_FAMILIES = int(params.get('numFamily', NUM_FAMILIES))
         BOARD_RET = float(params.get('boardRet', BOARD_RET))
         BOARD_SOG = float(params.get('boardSog', BOARD_SOG))
-        CRIS_PERIOD = int(params.get('cris', CRIS_PERIOD))
+        BOARD_ADAPT = float(params.get('boardAdapt', BOARD_ADAPT))
         MAX_VISION = int(params.get('maxVision', MAX_VISION))
+        CRIS_PERIOD = int(params.get('cris', CRIS_PERIOD))
         WORLD_WIDTH = int(params.get('worldXSize', WORLD_WIDTH))
         WORLD_HEIGHT = int(params.get('worldYSize', WORLD_HEIGHT))
+        
+        MALE_INCOME_BASE = params.get('maleIncomeBase', MALE_INCOME_BASE)
+        FEMALE_INCOME_BASE = params.get('femaleIncomeBase', FEMALE_INCOME_BASE)
+        EXPENDITURE_BASE = params.get('expenditureBase', EXPENDITURE_BASE)
+        INIT_CAPITAL_MEAN = params.get('initCapitalMean', INIT_CAPITAL_MEAN)
+        INIT_CAPITAL_STD = params.get('initCapitalStd', INIT_CAPITAL_STD)
+        INIT_ADAPT_MEAN = params.get('initAdaptMean', INIT_ADAPT_MEAN)
+        INIT_ADAPT_STD = params.get('initAdaptStd', INIT_ADAPT_STD)
+        INIT_TOLERANCE_MEAN = params.get('initToleranceMean', INIT_TOLERANCE_MEAN)
+        INIT_TOLERANCE_STD = params.get('initToleranceStd', INIT_TOLERANCE_STD)
+        RESOURCE_BASE = params.get('resourceBase', RESOURCE_BASE)
+        GLOBAL_BOOM_INCREMENT = params.get('globalBoomIncrement', GLOBAL_BOOM_INCREMENT)
+        GLOBAL_CRISIS_DECREMENT = -abs(params.get('globalCrisisDecrement', abs(GLOBAL_CRISIS_DECREMENT)))
+        LOCAL_VARIATION_AMPLITUDE = params.get('localVariationAmplitude', LOCAL_VARIATION_AMPLITUDE)
+        CONSUMPTION_RATE = params.get('consumptionRate', CONSUMPTION_RATE)
+        RENEWAL_RATE = params.get('renewalRate', RENEWAL_RATE)
+        DIFFUSION_RATE = params.get('diffusionRate', DIFFUSION_RATE)
+        MOVE_PROB = params.get('moveProb', MOVE_PROB)
+        BIRTH_BASE_PROB = params.get('birthBaseProb', BIRTH_BASE_PROB)
+        BIRTH_BOOM_MULTIPLIER = params.get('birthBoomMultiplier', BIRTH_BOOM_MULTIPLIER)
+        BIRTH_MIN_CAPITAL = params.get('birthMinCapital', BIRTH_MIN_CAPITAL)
+        BIRTH_MAX_FAMILIES = int(params.get('birthMaxFamilies', BIRTH_MAX_FAMILIES))
+        EXPENDITURE_MIN = params.get('expenditureMin', EXPENDITURE_MIN)
+        EXPENDITURE_MAX = params.get('expenditureMax', EXPENDITURE_MAX)
+        STEPS_BEFORE_REDUCE_EXPENSES = int(params.get('stepsBeforeReduceExpenses', STEPS_BEFORE_REDUCE_EXPENSES))
+        STEPS_BEFORE_WOMAN_WORK = int(params.get('stepsBeforeWomanWork', STEPS_BEFORE_WOMAN_WORK))
 
     world = World(WORLD_WIDTH, WORLD_HEIGHT, NUM_FAMILIES, MAX_VISION)
     world.config = {'boardRet': BOARD_RET, 'boardSog': BOARD_SOG, 'cris': CRIS_PERIOD}
@@ -155,7 +211,15 @@ def main():
 
     def reset_with_menu():
         nonlocal world, paused
-        global NUM_FAMILIES, BOARD_RET, BOARD_SOG, CRIS_PERIOD, MAX_VISION, WORLD_WIDTH, WORLD_HEIGHT
+        global NUM_FAMILIES, BOARD_RET, BOARD_SOG, BOARD_ADAPT, MAX_VISION, CRIS_PERIOD, WORLD_WIDTH, WORLD_HEIGHT
+        global MALE_INCOME_BASE, FEMALE_INCOME_BASE, EXPENDITURE_BASE
+        global INIT_CAPITAL_MEAN, INIT_CAPITAL_STD, INIT_ADAPT_MEAN, INIT_ADAPT_STD
+        global INIT_TOLERANCE_MEAN, INIT_TOLERANCE_STD
+        global RESOURCE_BASE, GLOBAL_BOOM_INCREMENT, GLOBAL_CRISIS_DECREMENT
+        global LOCAL_VARIATION_AMPLITUDE, CONSUMPTION_RATE, RENEWAL_RATE, DIFFUSION_RATE
+        global MOVE_PROB, BIRTH_BASE_PROB, BIRTH_BOOM_MULTIPLIER, BIRTH_MIN_CAPITAL, BIRTH_MAX_FAMILIES
+        global EXPENDITURE_MIN, EXPENDITURE_MAX, STEPS_BEFORE_REDUCE_EXPENSES, STEPS_BEFORE_WOMAN_WORK
+        
         current = {
             'numFamily': NUM_FAMILIES,
             'boardRet': BOARD_RET,
@@ -164,19 +228,101 @@ def main():
             'maxVision': MAX_VISION,
             'cris': CRIS_PERIOD,
             'worldXSize': WORLD_WIDTH,
-            'worldYSize': WORLD_HEIGHT
+            'worldYSize': WORLD_HEIGHT,
+            'maleIncomeBase': MALE_INCOME_BASE,
+            'femaleIncomeBase': FEMALE_INCOME_BASE,
+            'expenditureBase': EXPENDITURE_BASE,
+            'initCapitalMean': INIT_CAPITAL_MEAN,
+            'initCapitalStd': INIT_CAPITAL_STD,
+            'initAdaptMean': INIT_ADAPT_MEAN,
+            'initAdaptStd': INIT_ADAPT_STD,
+            'initToleranceMean': INIT_TOLERANCE_MEAN,
+            'initToleranceStd': INIT_TOLERANCE_STD,
+            'resourceBase': RESOURCE_BASE,
+            'globalBoomIncrement': GLOBAL_BOOM_INCREMENT,
+            'globalCrisisDecrement': abs(GLOBAL_CRISIS_DECREMENT),
+            'localVariationAmplitude': LOCAL_VARIATION_AMPLITUDE,
+            'consumptionRate': CONSUMPTION_RATE,
+            'renewalRate': RENEWAL_RATE,
+            'diffusionRate': DIFFUSION_RATE,
+            'moveProb': MOVE_PROB,
+            'birthBaseProb': BIRTH_BASE_PROB,
+            'birthBoomMultiplier': BIRTH_BOOM_MULTIPLIER,
+            'birthMinCapital': BIRTH_MIN_CAPITAL,
+            'birthMaxFamilies': BIRTH_MAX_FAMILIES,
+            'expenditureMin': EXPENDITURE_MIN,
+            'expenditureMax': EXPENDITURE_MAX,
+            'stepsBeforeReduceExpenses': STEPS_BEFORE_REDUCE_EXPENSES,
+            'stepsBeforeWomanWork': STEPS_BEFORE_WOMAN_WORK
         }
+        
         bg = capture_background(screen)
         menu = ConfigMenu(screen, font, current, bg)
         new_params = menu.run()
+        
         if new_params:
             NUM_FAMILIES = int(new_params.get('numFamily', NUM_FAMILIES))
             BOARD_RET = float(new_params.get('boardRet', BOARD_RET))
             BOARD_SOG = float(new_params.get('boardSog', BOARD_SOG))
-            CRIS_PERIOD = int(new_params.get('cris', CRIS_PERIOD))
+            BOARD_ADAPT = float(new_params.get('boardAdapt', BOARD_ADAPT))
             MAX_VISION = int(new_params.get('maxVision', MAX_VISION))
+            CRIS_PERIOD = int(new_params.get('cris', CRIS_PERIOD))
             WORLD_WIDTH = int(new_params.get('worldXSize', WORLD_WIDTH))
             WORLD_HEIGHT = int(new_params.get('worldYSize', WORLD_HEIGHT))
+            
+            MALE_INCOME_BASE = new_params.get('maleIncomeBase', MALE_INCOME_BASE)
+            FEMALE_INCOME_BASE = new_params.get('femaleIncomeBase', FEMALE_INCOME_BASE)
+            EXPENDITURE_BASE = new_params.get('expenditureBase', EXPENDITURE_BASE)
+            INIT_CAPITAL_MEAN = new_params.get('initCapitalMean', INIT_CAPITAL_MEAN)
+            INIT_CAPITAL_STD = new_params.get('initCapitalStd', INIT_CAPITAL_STD)
+            INIT_ADAPT_MEAN = new_params.get('initAdaptMean', INIT_ADAPT_MEAN)
+            INIT_ADAPT_STD = new_params.get('initAdaptStd', INIT_ADAPT_STD)
+            INIT_TOLERANCE_MEAN = new_params.get('initToleranceMean', INIT_TOLERANCE_MEAN)
+            INIT_TOLERANCE_STD = new_params.get('initToleranceStd', INIT_TOLERANCE_STD)
+            RESOURCE_BASE = new_params.get('resourceBase', RESOURCE_BASE)
+            GLOBAL_BOOM_INCREMENT = new_params.get('globalBoomIncrement', GLOBAL_BOOM_INCREMENT)
+            GLOBAL_CRISIS_DECREMENT = -abs(new_params.get('globalCrisisDecrement', abs(GLOBAL_CRISIS_DECREMENT)))
+            LOCAL_VARIATION_AMPLITUDE = new_params.get('localVariationAmplitude', LOCAL_VARIATION_AMPLITUDE)
+            CONSUMPTION_RATE = new_params.get('consumptionRate', CONSUMPTION_RATE)
+            RENEWAL_RATE = new_params.get('renewalRate', RENEWAL_RATE)
+            DIFFUSION_RATE = new_params.get('diffusionRate', DIFFUSION_RATE)
+            MOVE_PROB = new_params.get('moveProb', MOVE_PROB)
+            BIRTH_BASE_PROB = new_params.get('birthBaseProb', BIRTH_BASE_PROB)
+            BIRTH_BOOM_MULTIPLIER = new_params.get('birthBoomMultiplier', BIRTH_BOOM_MULTIPLIER)
+            BIRTH_MIN_CAPITAL = new_params.get('birthMinCapital', BIRTH_MIN_CAPITAL)
+            BIRTH_MAX_FAMILIES = int(new_params.get('birthMaxFamilies', BIRTH_MAX_FAMILIES))
+            EXPENDITURE_MIN = new_params.get('expenditureMin', EXPENDITURE_MIN)
+            EXPENDITURE_MAX = new_params.get('expenditureMax', EXPENDITURE_MAX)
+            STEPS_BEFORE_REDUCE_EXPENSES = int(new_params.get('stepsBeforeReduceExpenses', STEPS_BEFORE_REDUCE_EXPENSES))
+            STEPS_BEFORE_WOMAN_WORK = int(new_params.get('stepsBeforeWomanWork', STEPS_BEFORE_WOMAN_WORK))
+            
+            import config
+            config.MALE_INCOME_BASE = MALE_INCOME_BASE
+            config.FEMALE_INCOME_BASE = FEMALE_INCOME_BASE
+            config.EXPENDITURE_BASE = EXPENDITURE_BASE
+            config.INIT_CAPITAL_MEAN = INIT_CAPITAL_MEAN
+            config.INIT_CAPITAL_STD = INIT_CAPITAL_STD
+            config.INIT_ADAPT_MEAN = INIT_ADAPT_MEAN
+            config.INIT_ADAPT_STD = INIT_ADAPT_STD
+            config.INIT_TOLERANCE_MEAN = INIT_TOLERANCE_MEAN
+            config.INIT_TOLERANCE_STD = INIT_TOLERANCE_STD
+            config.RESOURCE_BASE = RESOURCE_BASE
+            config.GLOBAL_BOOM_INCREMENT = GLOBAL_BOOM_INCREMENT
+            config.GLOBAL_CRISIS_DECREMENT = GLOBAL_CRISIS_DECREMENT
+            config.LOCAL_VARIATION_AMPLITUDE = LOCAL_VARIATION_AMPLITUDE
+            config.CONSUMPTION_RATE = CONSUMPTION_RATE
+            config.RENEWAL_RATE = RENEWAL_RATE
+            config.DIFFUSION_RATE = DIFFUSION_RATE
+            config.MOVE_PROB = MOVE_PROB
+            config.BIRTH_BASE_PROB = BIRTH_BASE_PROB
+            config.BIRTH_BOOM_MULTIPLIER = BIRTH_BOOM_MULTIPLIER
+            config.BIRTH_MIN_CAPITAL = BIRTH_MIN_CAPITAL
+            config.BIRTH_MAX_FAMILIES = BIRTH_MAX_FAMILIES
+            config.EXPENDITURE_MIN = EXPENDITURE_MIN
+            config.EXPENDITURE_MAX = EXPENDITURE_MAX
+            config.STEPS_BEFORE_REDUCE_EXPENSES = STEPS_BEFORE_REDUCE_EXPENSES
+            config.STEPS_BEFORE_WOMAN_WORK = STEPS_BEFORE_WOMAN_WORK
+            
             world = World(WORLD_WIDTH, WORLD_HEIGHT, NUM_FAMILIES, MAX_VISION)
             world.config = {'boardRet': BOARD_RET, 'boardSog': BOARD_SOG, 'cris': CRIS_PERIOD}
             paused = False
@@ -189,7 +335,6 @@ def main():
         show_statistics(world)
         paused = was_paused
 
-    # Кнопки с подсказками
     buttons = [
         ModernButton(0, 0, 0, 40, "Пауза / Продолжить", toggle_pause,
                     (200, 100, 50), (220, 120, 70), "Остановить или продолжить симуляцию"),

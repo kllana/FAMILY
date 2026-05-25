@@ -39,7 +39,12 @@ class World:
         self.families = []
         for i in range(min(num_families, len(all_cells))):
             x, y = all_cells[i]
-            self.families.append(Family(x, y, i))
+            new_family = Family(x, y, i)
+            # Используем ТЕКУЩИЕ значения из config (которые могли быть изменены)
+            new_family.capital = max(30.0, np.random.normal(INIT_CAPITAL_MEAN, INIT_CAPITAL_STD))
+            new_family.adaptation = max(0.0, np.random.normal(INIT_ADAPT_MEAN, INIT_ADAPT_STD))
+            new_family.tolerance = max(0.0, np.random.normal(INIT_TOLERANCE_MEAN, INIT_TOLERANCE_STD))
+            self.families.append(new_family)
 
         self.time = 0
         self.next_phase_change = CRIS_PERIOD

@@ -1,4 +1,3 @@
-# ui/menu.py
 import pygame
 import json
 import os
@@ -44,7 +43,7 @@ class ConfigMenu:
             "Высота поля"
         ]
 
-        # Расширенная страница
+        # Расширенная страница - ВСЕ группы из config.py
         self.advanced_groups = [
             {
                 "name": "ДОХОДЫ И РАСХОДЫ",
@@ -214,7 +213,6 @@ class ConfigMenu:
     def _draw_advanced_page(self):
         self.param_rects = []
         y = self.content_rect.y + 5 - self.scroll_offset
-        global_index = 0
 
         for group in self.advanced_groups:
             if y + 28 >= self.content_rect.y and y <= self.content_rect.bottom:
@@ -246,7 +244,6 @@ class ConfigMenu:
                         self.param_rects.append((click_rect, key, y, name))
 
                 y += 32
-                global_index += 1
 
             y += 10
 
