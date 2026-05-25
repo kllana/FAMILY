@@ -1,15 +1,16 @@
 # ui/buttons.py
 import pygame
-from colors import COLOR_TEXT, COLOR_PANEL_BORDER
+from colors import COLOR_TEXT, COLOR_PANEL_BORDER, COLOR_BG, COLOR_TEXT_DIM
 
 class ModernButton:
-    def __init__(self, x, y, w, h, text, action, color_idle, color_hover):
+    def __init__(self, x, y, w, h, text, action, color_idle, color_hover, tooltip=""):
         self.rect = pygame.Rect(x, y, w, h)
         self.text = text
         self.action = action
         self.hovered = False
         self.color_idle = color_idle
         self.color_hover = color_hover
+        self.tooltip = tooltip
 
     def draw(self, screen, font):
         color = self.color_hover if self.hovered else self.color_idle
@@ -22,6 +23,15 @@ class ModernButton:
         text_surf = font.render(self.text, True, COLOR_TEXT)
         text_rect = text_surf.get_rect(center=self.rect.center)
         screen.blit(text_surf, text_rect)
+        
+        # Рисуем подсказку при наведении
+        if self.hovered and self.tooltip:
+            tooltip_surf = font.render(self.tooltip, True, COLOR_TEXT_DIM)
+            tooltip_rect = tooltip_surf.get_rect(topleft=(self.rect.x, self.rect.y - 25))
+            # Фон подсказки
+            pygame.draw.rect(screen, COLOR_BG, tooltip_rect.inflate(10, 5), border_radius=5)
+            pygame.draw.rect(screen, COLOR_PANEL_BORDER, tooltip_rect.inflate(10, 5), 1, border_radius=5)
+            screen.blit(tooltip_surf, tooltip_rect)
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEMOTION:
@@ -29,7 +39,6 @@ class ModernButton:
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
                 self.action()
-
 
 class Slider:
     def __init__(self, x, y, w, h, min_val, max_val, initial_val):
