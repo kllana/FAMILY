@@ -9,9 +9,11 @@ from models import World
 from ui import ConfigMenu, ModernButton, Slider, draw_world, draw_simulation
 from statistics import show_statistics
 
+
 def capture_background(screen):
     """Сохраняет текущее содержимое экрана как поверхность для фона меню"""
     return screen.copy()
+
 
 def main():
     global NUM_FAMILIES, BOARD_RET, BOARD_SOG, BOARD_ADAPT, MAX_VISION, CRIS_PERIOD, WORLD_WIDTH, WORLD_HEIGHT
@@ -33,7 +35,7 @@ def main():
         'worldYSize': WORLD_HEIGHT
     }
 
-    # Временный мир для красивого фона перед меню
+    # Временный мир для фона
     temp_world = World(WORLD_WIDTH, WORLD_HEIGHT, NUM_FAMILIES, MAX_VISION)
     screen_rect = screen.get_rect()
     
@@ -69,11 +71,6 @@ def main():
 
     # Создаём настоящий мир
     world = World(WORLD_WIDTH, WORLD_HEIGHT, NUM_FAMILIES, MAX_VISION)
-    world.config = {
-        'boardRet': BOARD_RET,
-        'boardSog': BOARD_SOG,
-        'cris': CRIS_PERIOD
-    }
 
     paused = False
     speed = 1
@@ -97,7 +94,6 @@ def main():
             'worldXSize': WORLD_WIDTH,
             'worldYSize': WORLD_HEIGHT
         }
-        # Захватываем текущий экран как фон для меню
         bg = capture_background(screen)
         menu = ConfigMenu(screen, font, current, bg)
         new_params = menu.run()
@@ -110,11 +106,6 @@ def main():
             WORLD_WIDTH = new_params['worldXSize']
             WORLD_HEIGHT = new_params['worldYSize']
             world = World(WORLD_WIDTH, WORLD_HEIGHT, NUM_FAMILIES, MAX_VISION)
-            world.config = {
-                'boardRet': BOARD_RET,
-                'boardSog': BOARD_SOG,
-                'cris': CRIS_PERIOD
-            }
             paused = False
 
     def show_stats():
