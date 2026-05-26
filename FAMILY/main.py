@@ -1,7 +1,7 @@
 import pygame
 from config import (
     NUM_FAMILIES, BOARD_RET, BOARD_SOG, BOARD_ADAPT, MAX_VISION,
-    CRIS_PERIOD, WORLD_WIDTH, WORLD_HEIGHT, CELL_SIZE, INFO_PANEL_WIDTH,
+    CRIS_PERIOD, WORLD_WIDTH, WORLD_HEIGHT, CELL_SIZE, INFO_PANEL_WIDTH, INFO_PANEL_SCROLL_SPEED,
     MALE_INCOME_BASE, FEMALE_INCOME_BASE, EXPENDITURE_BASE,
     INIT_CAPITAL_MEAN, INIT_CAPITAL_STD, INIT_ADAPT_MEAN, INIT_ADAPT_STD,
     INIT_TOLERANCE_MEAN, INIT_TOLERANCE_STD,
@@ -204,10 +204,22 @@ def main():
     speed = 1
     running = True
     slider = Slider(0, 0, INFO_PANEL_WIDTH - 30, 12, 1, 10, speed)
+    panel_scroll_y = 0
+    panel_dragging_scroll = False
+    thumb_rect = None
+    scrollbar_rect = None
 
     def toggle_pause():
         nonlocal paused
         paused = not paused
+
+    def step_once():
+        nonlocal paused
+        was_paused = paused
+        paused = True
+        world.step()
+        if not was_paused:
+            paused = False
 
     def reset_with_menu():
         nonlocal world, paused
@@ -340,10 +352,11 @@ def main():
                     (200, 100, 50), (220, 120, 70), "Остановить или продолжить симуляцию"),
         ModernButton(0, 0, 0, 40, "Сброс / Настройка", reset_with_menu,
                     (180, 60, 60), (210, 80, 80), "Сбросить симуляцию и открыть настройки"),
-        ModernButton(0, 0, 0, 40, "Показать графики", show_stats,
-                    (50, 120, 180), (70, 140, 210), "Открыть окно с графиками статистики"),
+        ModernButton(0, 0, 0, 40, "Один шаг", step_once,
+                    (100, 100, 100), (130, 130, 130), "Выполнить один шаг симуляции"),
+        ModernButton(0, 0, 0, 40, "Вывести графики", show_stats,
+                    (50, 120, 180), (70, 140, 210), "Открыть окно с графиками за всю историю (можно сохранить в PNG)"),
     ]
-
     while running:
         screen_rect = screen.get_rect()
         offset_x, offset_y, panel_rect, cell_size = get_offsets_and_panel(screen_rect, WORLD_WIDTH, WORLD_HEIGHT)
@@ -364,6 +377,8 @@ def main():
                     speed = max(1, speed - 1)
                 elif event.key == pygame.K_r:
                     reset_with_menu()
+                elif event.key == pygame.K_s:
+                    step_once()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_pos = event.pos
                 clicked_on_button = False
@@ -379,6 +394,32 @@ def main():
                             if f.alive and f.x == cell_x and f.y == cell_y:
                                 show_family_info(f, world.is_crisis)
                                 break
+                
+                # Проверка на скроллбар
+                if thumb_rect and thumb_rect.collidepoint(event.pos):
+                    panel_dragging_scroll = True
+                    panel_drag_start_y = event.pos[1]
+                    panel_drag_start_scroll = panel_scroll_y
+            
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                panel_dragging_scroll = False
+            
+            elif event.type == pygame.MOUSEMOTION and panel_dragging_scroll:
+                delta = event.pos[1] - panel_drag_start_y
+                max_scroll = max(0, 1200 - panel_rect.height)
+                if thumb_rect:
+                    scroll_range = panel_rect.height - thumb_rect.height
+                    if scroll_range > 0:
+                        panel_scroll_y = panel_drag_start_scroll + delta * max_scroll / scroll_range
+                        panel_scroll_y = max(0, min(max_scroll, panel_scroll_y))
+            
+            elif event.type == pygame.MOUSEWHEEL:
+                mouse_pos = pygame.mouse.get_pos()
+                if panel_rect.collidepoint(mouse_pos):
+                    panel_scroll_y -= event.y * INFO_PANEL_SCROLL_SPEED
+                    max_scroll = max(0, 1200 - panel_rect.height)
+                    panel_scroll_y = max(0, min(max_scroll, panel_scroll_y))
+            
             slider.handle_event(event)
             for btn in buttons:
                 btn.handle_event(event)
@@ -393,7 +434,7 @@ def main():
 
         screen.fill(COLOR_BG)
         draw_world(screen, world, offset_x, offset_y, cell_size)
-        draw_simulation(screen, world, font, speed, paused, buttons, panel_rect, slider)
+        thumb_rect, scrollbar_rect = draw_simulation(screen, world, font, speed, paused, buttons, panel_rect, slider, panel_scroll_y)
         pygame.display.flip()
         clock.tick(60)
 
