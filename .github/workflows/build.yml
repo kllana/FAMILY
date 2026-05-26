@@ -40,7 +40,7 @@ jobs:
     - name: Build with PyInstaller
       run: |
         cd FAMILY
-        pyinstaller --onefile --windowed --name "FamilyModel_v0.7" main.py
+        pyinstaller --onefile --windowed --name "FamilyModel" --hidden-import=statistics --paths=. main.py
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
