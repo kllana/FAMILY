@@ -96,7 +96,7 @@ def main():
 
     pygame.init()
     screen = pygame.display.set_mode((1200, 800), pygame.RESIZABLE)
-    pygame.display.set_caption("Модель выживания семьи — компьютерное моделирование")
+    pygame.display.set_caption("Family")
     clock = pygame.time.Clock()
     font = pygame.font.SysFont('Segoe UI', 14)
 
@@ -395,7 +395,6 @@ def main():
                                 show_family_info(f, world.is_crisis)
                                 break
                 
-                # Проверка на скроллбар
                 if thumb_rect and thumb_rect.collidepoint(event.pos):
                     panel_dragging_scroll = True
                     panel_drag_start_y = event.pos[1]

@@ -1,4 +1,3 @@
-# statistics.py
 import matplotlib.pyplot as plt
 
 def show_statistics(world):
