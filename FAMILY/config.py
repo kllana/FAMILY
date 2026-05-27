@@ -1,10 +1,7 @@
-# config.py
-# ====================== РАЗМЕРЫ ОКНА ======================
 CELL_SIZE = 8
 INFO_PANEL_WIDTH = 300
-INFO_PANEL_SCROLL_SPEED = 30  # Скорость скролла в пикселях
+INFO_PANEL_SCROLL_SPEED = 30
 
-# ====================== ПАРАМЕТРЫ МОДЕЛИ (БАЗОВЫЕ) ======================
 NUM_FAMILIES = 50
 BOARD_RET = 180.0
 BOARD_SOG = 30.0
@@ -14,12 +11,10 @@ CRIS_PERIOD = 400
 WORLD_WIDTH = 85
 WORLD_HEIGHT = 85
 
-# ====================== ДОХОДЫ И РАСХОДЫ ======================
 MALE_INCOME_BASE = 5.0
 FEMALE_INCOME_BASE = 4.0
 EXPENDITURE_BASE = 0.80
 
-# ====================== НАЧАЛЬНЫЙ КАПИТАЛ И АДАПТИВНОСТЬ ======================
 INIT_CAPITAL_MEAN = 190.0
 INIT_CAPITAL_STD = 80.0
 INIT_ADAPT_MEAN = 50.0
@@ -27,21 +22,17 @@ INIT_ADAPT_STD = 15.0
 INIT_TOLERANCE_MEAN = 50.0
 INIT_TOLERANCE_STD = 15.0
 
-# ====================== РЕСУРС И ЦИКЛЫ ======================
 RESOURCE_BASE = 22.0
 GLOBAL_BOOM_INCREMENT = 0.15
 GLOBAL_CRISIS_DECREMENT = -0.20
 
-# ====================== ЛОКАЛЬНАЯ ВАРИАЦИЯ ======================
 LOCAL_VARIATION_AMPLITUDE = 12.0
 CONSUMPTION_RATE = 0.5
 RENEWAL_RATE = 0.005
 DIFFUSION_RATE = 0.03
 
-# ====================== ДВИЖЕНИЕ ======================
 MOVE_PROB = 0.5
 
-# ====================== РОЖДАЕМОСТЬ ======================
 BIRTH_BASE_PROB = 0.003
 BIRTH_BOOM_MULTIPLIER = 4.0
 BIRTH_MIN_CAPITAL = 150.0
