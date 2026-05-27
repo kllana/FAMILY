@@ -1,4 +1,3 @@
-# ui/buttons.py
 import pygame
 from colors import COLOR_TEXT, COLOR_PANEL_BORDER, COLOR_BG, COLOR_TEXT_DIM
 
@@ -24,11 +23,9 @@ class ModernButton:
         text_rect = text_surf.get_rect(center=self.rect.center)
         screen.blit(text_surf, text_rect)
         
-        # Рисуем подсказку при наведении
         if self.hovered and self.tooltip:
             tooltip_surf = font.render(self.tooltip, True, COLOR_TEXT_DIM)
             tooltip_rect = tooltip_surf.get_rect(topleft=(self.rect.x, self.rect.y - 25))
-            # Фон подсказки
             pygame.draw.rect(screen, COLOR_BG, tooltip_rect.inflate(10, 5), border_radius=5)
             pygame.draw.rect(screen, COLOR_PANEL_BORDER, tooltip_rect.inflate(10, 5), 1, border_radius=5)
             screen.blit(tooltip_surf, tooltip_rect)
