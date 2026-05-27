@@ -30,7 +30,6 @@ class ConfigMenu:
         self.export_button_rect = None
         self.import_button_rect = None
 
-        # Простая страница
         self.simple_keys = ['numFamily', 'boardRet', 'boardSog', 'boardAdapt', 'maxVision', 'cris', 'worldXSize', 'worldYSize']
         self.simple_names = [
             "Количество семей",
@@ -43,7 +42,6 @@ class ConfigMenu:
             "Высота поля"
         ]
 
-        # Расширенная страница - ВСЕ группы из config.py
         self.advanced_groups = [
             {
                 "name": "ДОХОДЫ И РАСХОДЫ",
@@ -107,7 +105,6 @@ class ConfigMenu:
         pygame.draw.rect(self.screen, COLOR_MENU_BG, (menu_x, menu_y, menu_w, menu_h), border_radius=15)
         pygame.draw.rect(self.screen, COLOR_PANEL_BORDER, (menu_x, menu_y, menu_w, menu_h), 3, border_radius=15)
 
-        # Кнопки переключения страниц
         btn_w = 120
         btn_h = 30
         btn_simple = pygame.Rect(menu_x + menu_w//2 - btn_w - 10, menu_y + 15, btn_w, btn_h)
@@ -129,11 +126,9 @@ class ConfigMenu:
         self.btn_simple_rect = btn_simple
         self.btn_advanced_rect = btn_advanced
 
-        # Область содержимого
         self.content_rect = pygame.Rect(menu_x + 10, menu_y + 60, menu_w - 20, menu_h - 130)
         self._update_content_height()
 
-        # Рисуем содержимое с обрезкой
         old_clip = self.screen.get_clip()
         self.screen.set_clip(self.content_rect)
 
@@ -144,11 +139,9 @@ class ConfigMenu:
 
         self.screen.set_clip(old_clip)
 
-        # Рисуем скроллбар
         if self.total_content_height > self.content_rect.height:
             self._draw_scrollbar()
 
-        # Кнопка ЭКСПОРТ
         export_rect = pygame.Rect(menu_x + 30, menu_y + menu_h - 55, 100, 40)
         color_export = COLOR_BUTTON_HOVER if export_rect.collidepoint(mouse_pos) else COLOR_BUTTON
         pygame.draw.rect(self.screen, color_export, export_rect, border_radius=8)
@@ -158,7 +151,6 @@ class ConfigMenu:
         self.screen.blit(export_text, export_text_rect)
         self.export_button_rect = export_rect
 
-        # Кнопка ИМПОРТ
         import_rect = pygame.Rect(menu_x + menu_w - 130, menu_y + menu_h - 55, 100, 40)
         color_import = COLOR_BUTTON_HOVER if import_rect.collidepoint(mouse_pos) else COLOR_BUTTON
         pygame.draw.rect(self.screen, color_import, import_rect, border_radius=8)
@@ -168,7 +160,6 @@ class ConfigMenu:
         self.screen.blit(import_text, import_text_rect)
         self.import_button_rect = import_rect
 
-        # Кнопка START
         start_rect = pygame.Rect(menu_x + menu_w//2 - 100, menu_y + menu_h - 55, 200, 40)
         color_start = COLOR_START_HOVER if start_rect.collidepoint(mouse_pos) else COLOR_START_BUTTON
         pygame.draw.rect(self.screen, color_start, start_rect, border_radius=8)
