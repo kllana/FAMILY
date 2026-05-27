@@ -1,4 +1,3 @@
-# models/family.py
 import random
 import numpy as np
 from config import (
