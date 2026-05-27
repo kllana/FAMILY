@@ -1,4 +1,3 @@
-# models/world.py (исправленная версия)
 import numpy as np
 import random
 from collections import deque
@@ -40,7 +39,6 @@ class World:
         for i in range(min(num_families, len(all_cells))):
             x, y = all_cells[i]
             new_family = Family(x, y, i)
-            # Используем ТЕКУЩИЕ значения из config (которые могли быть изменены)
             new_family.capital = max(30.0, np.random.normal(INIT_CAPITAL_MEAN, INIT_CAPITAL_STD))
             new_family.adaptation = max(0.0, np.random.normal(INIT_ADAPT_MEAN, INIT_ADAPT_STD))
             new_family.tolerance = max(0.0, np.random.normal(INIT_TOLERANCE_MEAN, INIT_TOLERANCE_STD))
@@ -76,7 +74,6 @@ class World:
 
     def update_resource_local(self):
         """Обновление ресурсов с учетом потребления и диффузии"""
-        # Векторизованное потребление
         alive_mask = np.zeros((self.w, self.h), dtype=bool)
         for f in self.families:
             if f.alive:
@@ -85,11 +82,9 @@ class World:
         self.resource_variation[alive_mask] -= CONSUMPTION_RATE
         self.resource_variation = np.maximum(-RESOURCE_BASE * 0.8, self.resource_variation)
 
-        # Обновление ресурсов
         if RENEWAL_RATE > 0:
             self.resource_variation *= (1 - RENEWAL_RATE)
 
-        # Диффузия (только каждый 5-й шаг для оптимизации)
         if DIFFUSION_RATE > 0 and self.step_counter % 5 == 0:
             variation_copy = self.resource_variation.copy()
             variation_copy[1:-1, 1:-1] += DIFFUSION_RATE * (
@@ -99,7 +94,6 @@ class World:
             )
             self.resource_variation = variation_copy
 
-        # Финальное обновление ресурса
         self.resource = self.base_resource + self.resource_variation
         self.resource = np.clip(self.resource, RESOURCE_BASE * 0.1, RESOURCE_BASE * 5.0)
 
@@ -129,13 +123,11 @@ class World:
                 if random.random() < MOVE_PROB:
                     best_val = res[f.x, f.y]
                     best_pos = (f.x, f.y)
-                    
-                    # Поиск лучшей позиции в радиусе видимости
+
                     for dx in range(-self.max_vision, self.max_vision + 1):
                         for dy in range(-self.max_vision, self.max_vision + 1):
                             nx, ny = f.x + dx, f.y + dy
                             if 0 <= nx < w and 0 <= ny < h:
-                                # Проверка занятости клетки
                                 occupied = False
                                 for f2 in self.families:
                                     if f2.alive and f2 != f and f2.x == nx and f2.y == ny:
@@ -144,15 +136,13 @@ class World:
                                 if not occupied and res[nx, ny] > best_val:
                                     best_val = res[nx, ny]
                                     best_pos = (nx, ny)
-                    
-                    # Шаг в сторону лучшей позиции
+
                     if best_pos != (f.x, f.y):
                         dx = np.sign(best_pos[0] - f.x)
                         dy = np.sign(best_pos[1] - f.y)
                         new_x = f.x + dx
                         new_y = f.y + dy
-                        
-                        # Проверка занятости новой позиции
+
                         occupied = False
                         for f2 in self.families:
                             if f2.alive and f2 != f and f2.x == new_x and f2.y == new_y:
@@ -172,8 +162,7 @@ class World:
         """Попытка создать новую семью"""
         if len(self.families) >= BIRTH_MAX_FAMILIES:
             return
-        
-        # Расчет вероятности рождения
+
         avg_capital = self.get_avg_capital()
         birth_prob = BIRTH_BASE_PROB
         
@@ -184,21 +173,18 @@ class World:
         
         if random.random() >= birth_prob:
             return
-        
-        # Поиск свободных клеток
+
         occupied = {(f.x, f.y) for f in self.families if f.alive}
         free_cells = [(x, y) for x in range(self.w) for y in range(self.h) 
                      if (x, y) not in occupied]
         
         if not free_cells:
             return
-        
-        # Создание новой семьи
+
         x, y = random.choice(free_cells)
         new_id = max([f.id for f in self.families] + [0]) + 1
         new_family = Family(x, y, new_id)
-        
-        # Установка начальных параметров
+
         new_family.capital = max(30.0, np.random.normal(INIT_CAPITAL_MEAN, INIT_CAPITAL_STD))
         new_family.adaptation = max(0.0, np.random.normal(INIT_ADAPT_MEAN, INIT_ADAPT_STD))
         new_family.tolerance = max(0.0, np.random.normal(INIT_TOLERANCE_MEAN, INIT_TOLERANCE_STD))
@@ -225,34 +211,25 @@ class World:
         """Основной шаг симуляции"""
         self.step_counter += 1
         self.time += 1
-        
-        # 1. Применение глобальной фазы
+
         self.apply_global_phase()
-        
-        # 2. Проверка смены фазы
+
         if self.time >= self.next_phase_change:
             self.is_crisis = not self.is_crisis
             self.next_phase_change = self.time + CRIS_PERIOD
-        
-        # 3. Обновление ресурсов
+
         self.update_resource_local()
-        
-        # 4. Перемещение семей
+
         self.move_families()
-        
-        # 5. Обновление состояния семей
+
         self.update_families()
-        
-        # 6. Удаление мертвых семей (один проход)
+
         self.families = [f for f in self.families if f.alive]
-        
-        # 7. Рождение новых семей
+ 
         self.birth_new_family()
-        
-        # 8. Дополнительная смертность в кризис
+
         self.apply_crisis_mortality()
-        
-        # 9. Сбор статистики
+
         self.pop_hist.append(self.get_population())
         self.cap_hist.append(self.get_avg_capital())
         self.work_hist.append(self.get_working_ratio())
@@ -270,5 +247,5 @@ class World:
         }
     
     def reset(self):
-        """Сброс мира до начального состояния (для отладки)"""
+        """Сброс мира до начального состояния"""
         self.__init__(self.w, self.h, self.num_families, self.max_vision)
