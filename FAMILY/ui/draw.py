@@ -33,13 +33,11 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect, sli
     pygame.draw.rect(screen, COLOR_PANEL, panel_rect)
     pygame.draw.rect(screen, COLOR_PANEL_BORDER, panel_rect, 2)
 
-    # Создаём clipping region для панели
     old_clip = screen.get_clip()
     screen.set_clip(panel_rect)
 
     y = panel_rect.top + 15 - scroll_y
     
-    # Статическая информация
     avg_res = np.mean(world.resource) if len(world.resource) > 0 else 0
     phase_text = "КРИЗИС" if world.is_crisis else "ПОДЪЁМ"
 
@@ -72,7 +70,6 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect, sli
     slider.draw(screen)
     y += 50
 
-    # Кнопки (Пауза, Сброс, Показать графики, Один шаг)
     button_y = y + 10
     for btn in buttons:
         btn.rect.x = panel_rect.left + 15
@@ -82,14 +79,12 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect, sli
             btn.draw(screen, font)
         button_y += 45
 
-    # Инициализируем переменные для графиков
     gy_pop = button_y
     gh = 70
     gy_cap = gy_pop + gh + 15
     gy_work = gy_cap + gh + 15
     gy_state = gy_work + gh + 15
 
-    # ===== МИНИ-ГРАФИК ПОПУЛЯЦИИ =====
     if len(world.pop_hist) > 5:
         gx = panel_rect.left + 15
         gy = gy_pop + 15
@@ -126,7 +121,6 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect, sli
                 if len(points) > 1:
                     pygame.draw.lines(screen, (100, 180, 255), False, points, 2)
 
-    # ===== МИНИ-ГРАФИК КАПИТАЛА =====
     if len(world.cap_hist) > 5:
         gx = panel_rect.left + 15
         gy = gy_cap + 15
@@ -163,7 +157,6 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect, sli
                 if len(points) > 1:
                     pygame.draw.lines(screen, (100, 255, 100), False, points, 2)
 
-    # ===== МИНИ-ГРАФИК РАБОТАЮЩИХ ЖЕНЩИН =====
     if len(world.work_hist) > 5:
         gx = panel_rect.left + 15
         gy = gy_work + 15
@@ -196,12 +189,11 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect, sli
                 if len(points) > 1:
                     pygame.draw.lines(screen, (255, 200, 100), False, points, 2)
 
-    # ===== ГИСТОГРАММА СОСТОЯНИЙ СЕМЕЙ (СТРАТЕГИЙ) =====
     if world.get_population() > 0:
         gx = panel_rect.left + 15
         gy = gy_state + 15
         gw = panel_rect.width - 30
-        gh_state = 85
+        gh_state = 105
         if panel_rect.top - 10 < gy + gh_state < panel_rect.bottom + 50:
             pygame.draw.rect(screen, COLOR_BG, (gx, gy, gw, gh_state), border_radius=8)
             pygame.draw.rect(screen, COLOR_PANEL_BORDER, (gx, gy, gw, gh_state), 2, border_radius=8)
@@ -214,9 +206,8 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect, sli
             inner_x = gx + margin
             inner_y = gy + margin
             inner_w = gw - margin * 2
-            inner_h = gh_state - margin * 2
+            inner_h = gh_state - margin * 2 - 20
 
-            # Подсчёт семей по состояниям
             state_counts = [0, 0, 0, 0, 0]
             for f in world.families:
                 if f.alive:
@@ -240,13 +231,12 @@ def draw_simulation(screen, world, font, speed, paused, buttons, panel_rect, sli
                         pygame.draw.rect(screen, colors[i], (bar_x, bar_y, bar_width, height))
 
                     label = font.render(labels[i], True, COLOR_TEXT_DIM)
-                    label_rect = label.get_rect(center=(bar_x + bar_width//2, inner_y + inner_h + 6))
+                    label_y = inner_y + inner_h + 14
+                    label_rect = label.get_rect(center=(bar_x + bar_width//2, label_y))
                     screen.blit(label, label_rect)
 
-    # Восстанавливаем clipping
     screen.set_clip(old_clip)
     
-    # Рисуем скроллбар, если нужно
     total_height = gy_state + 150 - panel_rect.top
     if total_height > panel_rect.height:
         scrollbar_rect = pygame.Rect(panel_rect.right - 12, panel_rect.y, 8, panel_rect.height)
