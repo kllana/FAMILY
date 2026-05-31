@@ -50,6 +50,11 @@ class Family:
         self.alive = True
         self.steps_low_capital = 0
         self.steps_reduced_expenses = 0
+        
+        # НОВЫЙ ПАРАМЕТР: индивидуальная чувствительность к кризису
+        # Нормальное распределение со средним 1.0 и стандартным отклонением 0.2
+        # Диапазон: от 0.5 до 1.5
+        self.crisis_sensitivity = max(0.5, min(1.5, np.random.normal(1.0, 0.2)))
 
     def get_state(self, is_crisis):
         an = self.adaptation / 100
@@ -84,8 +89,9 @@ class Family:
             return
 
         an = self.adaptation / 100
-        sn = self.tolerance / 100
-        crisis_threshold = an * BOARD_RET
+        
+        # ИСПРАВЛЕНИЕ: порог кризиса умножается на индивидуальную чувствительность
+        crisis_threshold = an * BOARD_RET * self.crisis_sensitivity
 
         if new_capital < crisis_threshold:
             self.steps_low_capital += 1
@@ -114,7 +120,7 @@ class Family:
                 self.steps_low_capital = 0
                 self.steps_reduced_expenses = 0
 
-        if new_capital > sn * an * BOARD_RET * 5:
+        if new_capital > self.tolerance / 100 * an * BOARD_RET * 5:
             if self.expenditure_rate < EXPENDITURE_MAX:
                 self.expenditure_rate = min(EXPENDITURE_MAX, self.expenditure_rate * 1.02)
 
