@@ -27,11 +27,12 @@ jobs:
         pip install pyinstaller pygame numpy matplotlib
     
     - name: Build with PyInstaller
+      shell: bash
       run: |
         cd FAMILY
         pyinstaller --onefile --windowed --name "FamilyModel_${{ github.ref_name }}" main.py
-        # Выводим список файлов для отладки
-        ls -la dist/
+        # Выводим список файлов для отладки (работает на всех ОС)
+        ls -la dist/ || dir dist/
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
