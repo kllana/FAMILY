@@ -1,6 +1,10 @@
 name: Mirror to GitFlic
 
-on: [push, delete, create]
+on:
+  push:
+    branches: [master, main]
+  delete:
+  create:
 
 jobs:
   mirror:
@@ -10,8 +14,8 @@ jobs:
         with:
           fetch-depth: 0
       
-      - uses: yesolutions/mirror-action@master
-        with:
-          REMOTE: https://gitflic.ru/project/mtt-klyueva/familymodel.git
-          GIT_USERNAME: 'ваш_логин_на_gitflic'
-          GIT_PASSWORD: ${{ secrets.GITFLIC_TOKEN }}
+      - name: Push to GitFlic
+        run: |
+          git remote add gitflic https://${{ secrets.GITFLIC_USERNAME }}:${{ secrets.GITFLIC_TOKEN }}@gitflic.ru/project/mtt-klyueva/familymodel.git
+          git push gitflic --all --force
+          git push gitflic --tags --force
