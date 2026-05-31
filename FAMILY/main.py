@@ -1,4 +1,5 @@
 import pygame
+import sys
 from config import (
     NUM_FAMILIES, BOARD_RET, BOARD_SOG, BOARD_ADAPT, MAX_VISION,
     CRIS_PERIOD, WORLD_WIDTH, WORLD_HEIGHT, CELL_SIZE, INFO_PANEL_WIDTH, INFO_PANEL_SCROLL_SPEED,
@@ -14,7 +15,13 @@ from config import (
 from colors import COLOR_BG
 from models import World
 from ui import ConfigMenu, ModernButton, Slider, draw_world, draw_simulation
-from stats_view import show_statistics
+from show_stats import show_statistics
+
+
+def safe_quit():
+    """Безопасное завершение программы"""
+    pygame.quit()
+    sys.exit(0)
 
 
 def capture_background(screen):
@@ -22,7 +29,7 @@ def capture_background(screen):
 
 
 def show_family_info(family, is_crisis):
-    info_width, info_height = 300, 230
+    info_width, info_height = 330, 260
     info_surface = pygame.Surface((info_width, info_height))
     info_surface.fill((30, 30, 40))
     pygame.draw.rect(info_surface, (60, 60, 70), info_surface.get_rect(), 3)
@@ -74,11 +81,10 @@ def show_family_info(family, is_crisis):
     waiting = True
     while waiting:
         for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                safe_quit()
             if ev.type == pygame.KEYDOWN or ev.type == pygame.MOUSEBUTTONDOWN:
                 waiting = False
-            elif ev.type == pygame.QUIT:
-                pygame.quit()
-                exit()
 
     screen.blit(background, (0, 0))
     pygame.display.flip()
@@ -199,6 +205,7 @@ def main():
 
     world = World(WORLD_WIDTH, WORLD_HEIGHT, NUM_FAMILIES, MAX_VISION)
     world.config = {'boardRet': BOARD_RET, 'boardSog': BOARD_SOG, 'cris': CRIS_PERIOD}
+    world.next_phase_change = CRIS_PERIOD
 
     paused = False
     speed = 1
@@ -309,6 +316,14 @@ def main():
             STEPS_BEFORE_WOMAN_WORK = int(new_params.get('stepsBeforeWomanWork', STEPS_BEFORE_WOMAN_WORK))
             
             import config
+            config.NUM_FAMILIES = NUM_FAMILIES
+            config.BOARD_RET = BOARD_RET
+            config.BOARD_SOG = BOARD_SOG
+            config.BOARD_ADAPT = BOARD_ADAPT
+            config.MAX_VISION = MAX_VISION
+            config.CRIS_PERIOD = CRIS_PERIOD
+            config.WORLD_WIDTH = WORLD_WIDTH
+            config.WORLD_HEIGHT = WORLD_HEIGHT
             config.MALE_INCOME_BASE = MALE_INCOME_BASE
             config.FEMALE_INCOME_BASE = FEMALE_INCOME_BASE
             config.EXPENDITURE_BASE = EXPENDITURE_BASE
@@ -337,6 +352,7 @@ def main():
             
             world = World(WORLD_WIDTH, WORLD_HEIGHT, NUM_FAMILIES, MAX_VISION)
             world.config = {'boardRet': BOARD_RET, 'boardSog': BOARD_SOG, 'cris': CRIS_PERIOD}
+            world.next_phase_change = CRIS_PERIOD
             paused = False
 
     def show_stats():
@@ -357,6 +373,7 @@ def main():
         ModernButton(0, 0, 0, 40, "Вывести графики", show_stats,
                     (50, 120, 180), (70, 140, 210), "Открыть окно с графиками за всю историю (можно сохранить в PNG)"),
     ]
+
     while running:
         screen_rect = screen.get_rect()
         offset_x, offset_y, panel_rect, cell_size = get_offsets_and_panel(screen_rect, WORLD_WIDTH, WORLD_HEIGHT)
@@ -364,11 +381,15 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+                break
+            
             elif event.type == pygame.VIDEORESIZE:
                 screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+            
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
+                    break
                 elif event.key == pygame.K_SPACE:
                     toggle_pause()
                 elif event.key == pygame.K_UP:
@@ -379,6 +400,7 @@ def main():
                     reset_with_menu()
                 elif event.key == pygame.K_s:
                     step_once()
+            
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_pos = event.pos
                 clicked_on_button = False
@@ -422,6 +444,9 @@ def main():
             slider.handle_event(event)
             for btn in buttons:
                 btn.handle_event(event)
+        
+        if not running:
+            break
 
         speed = slider.value
 
@@ -438,6 +463,7 @@ def main():
         clock.tick(60)
 
     pygame.quit()
+    sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -50,6 +50,7 @@ class World:
         self.pop_hist = deque(maxlen=2000)
         self.cap_hist = deque(maxlen=2000)
         self.work_hist = deque(maxlen=2000)
+        self.koff_hist = deque(maxlen=2000)  # История коэффициента расхода
         self.step_counter = 0
 
     def get_avg_resource(self):
@@ -71,6 +72,13 @@ class World:
         if not alive:
             return 0
         return sum(1 for f in alive if f.is_both_working()) / len(alive)
+
+    def get_avg_expenditure(self):
+        """Актуальный средний коэффициент расхода"""
+        alive = [f for f in self.families if f.alive]
+        if not alive:
+            return 0
+        return np.mean([f.expenditure_rate for f in alive])
 
     def update_resource_local(self):
         """Обновление ресурсов с учетом потребления и диффузии"""
@@ -105,7 +113,6 @@ class World:
             self.base_resource += GLOBAL_BOOM_INCREMENT
 
         self.base_resource = max(RESOURCE_BASE * 0.1, min(RESOURCE_BASE * 5.0, self.base_resource))
-        # Resource обновится в update_resource_local на следующем шаге
 
     def move_families(self):
         """Перемещение семей в поисках лучших ресурсов"""
@@ -216,14 +223,15 @@ class World:
 
         if self.time >= self.next_phase_change:
             self.is_crisis = not self.is_crisis
-            self.next_phase_change = self.time + CRIS_PERIOD
-
+            self.next_phase_change = self.time + self.config['cris']
+        
+        # 3. Обновление ресурсов
         self.update_resource_local()
 
         self.move_families()
 
         self.update_families()
-
+       
         self.families = [f for f in self.families if f.alive]
  
         self.birth_new_family()
@@ -233,6 +241,7 @@ class World:
         self.pop_hist.append(self.get_population())
         self.cap_hist.append(self.get_avg_capital())
         self.work_hist.append(self.get_working_ratio())
+        self.koff_hist.append(self.get_avg_expenditure())
     
     def get_statistics(self):
         """Получение текущей статистики"""
@@ -241,6 +250,7 @@ class World:
             'population': self.get_population(),
             'avg_capital': self.get_avg_capital(),
             'working_ratio': self.get_working_ratio(),
+            'avg_expenditure': self.get_avg_expenditure(),
             'avg_resource': self.get_avg_resource(),
             'is_crisis': self.is_crisis,
             'base_resource': self.base_resource
