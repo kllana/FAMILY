@@ -108,6 +108,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         name: ${{ github.ref_name }}
+        overwrite: true
         body: |
           ## Релиз ${{ github.ref_name }}
           
