@@ -1,13 +1,13 @@
-name: Build FamilyModel
+name: Create Release
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 jobs:
   build:
+    name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -22,28 +22,54 @@ jobs:
       with:
         python-version: '3.11'
     
-    - name: Install dependencies (Linux/macOS)
-      if: runner.os != 'Windows'
+    - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller pygame numpy matplotlib
-        if [[ "${{ runner.os }}" == "macOS" ]]; then
-          brew install python-tk || true
-        fi
-    
-    - name: Install dependencies (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        python -m pip install --upgrade pip
         pip install pyinstaller pygame numpy matplotlib
     
     - name: Build with PyInstaller
       run: |
         cd FAMILY
-        pyinstaller --onefile --windowed --name "FamilyModel" --hidden-import=statistics --paths=. main.py
+        pyinstaller --onefile --windowed --name "FamilyModel_${{ github.ref_name }}" main.py
     
-    - name: Upload artifacts
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: FamilyModel-${{ matrix.os }}
-        path: FAMILY/dist/
+        path: FAMILY/dist/FamilyModel_${{ github.ref_name }}*
+
+  release:
+    name: Create Release
+    needs: build  # Ждём завершения всех сборок
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Нужно для создания релиза
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Create Release and upload assets
+      uses: softprops/action-gh-release@v1
+      with:
+        name: ${{ github.ref_name }}
+        body: |
+          ## Релиз ${{ github.ref_name }}
+          
+          ### Установка
+          1. Скачайте файл для вашей ОС
+          2. Запустите его
+          
+          ### Изменения в этой версии
+          - Автоматическая сборка для всех платформ
+          - Исправлена передача параметров кризиса
+          - Улучшена стабильность при выходе
+        files: |
+          artifacts/FamilyModel-ubuntu-latest/*
+          artifacts/FamilyModel-windows-latest/*
+          artifacts/FamilyModel-macos-latest/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
