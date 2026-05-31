@@ -30,6 +30,8 @@ jobs:
       run: |
         cd FAMILY
         pyinstaller --onefile --windowed --name "FamilyModel_${{ github.ref_name }}" main.py
+        # Выводим список файлов для отладки
+        ls -la dist/
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -39,16 +41,21 @@ jobs:
 
   release:
     name: Create Release
-    needs: build  # Ждём завершения всех сборок
+    needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Нужно для создания релиза
+      contents: write
     
     steps:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts
+    
+    - name: List downloaded files (debug)
+      run: |
+        ls -la artifacts/
+        find artifacts/ -type f
     
     - name: Create Release and upload assets
       uses: softprops/action-gh-release@v1
@@ -60,11 +67,6 @@ jobs:
           ### Установка
           1. Скачайте файл для вашей ОС
           2. Запустите его
-          
-          ### Изменения в этой версии
-          - Автоматическая сборка для всех платформ
-          - Исправлена передача параметров кризиса
-          - Улучшена стабильность при выходе
         files: |
           artifacts/FamilyModel-ubuntu-latest/*
           artifacts/FamilyModel-windows-latest/*
