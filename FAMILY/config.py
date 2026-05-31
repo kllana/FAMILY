@@ -1,4 +1,4 @@
-# РАЗМЕРЫ ОКНА
+# РАЗМЕР
 CELL_SIZE = 8
 INFO_PANEL_WIDTH = 300
 INFO_PANEL_SCROLL_SPEED = 30
