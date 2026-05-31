@@ -1,18 +1,17 @@
 name: Mirror to GitFlic
 
-on: [push]
+on: [push, delete, create]
 
 jobs:
-  mirror-to-gitflic:
+  mirror:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
-      - name: Push to GitFlic
-        run: |
-          git remote add gitflic https://gitflic.ru/project/mtt-klyueva/familymodel.git
-          git push --force --all gitflic
-          git push --force --tags gitflic
+      - uses: yesolutions/mirror-action@master
+        with:
+          REMOTE: https://gitflic.ru/project/mtt-klyueva/familymodel.git
+          GIT_USERNAME: 'ваш_логин_на_gitflic'
+          GIT_PASSWORD: ${{ secrets.GITFLIC_TOKEN }}
