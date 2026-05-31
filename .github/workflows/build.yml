@@ -30,13 +30,11 @@ jobs:
       shell: bash
       run: |
         cd FAMILY
-        # Очищаем версию от точек
         VERSION_CLEAN="${{ github.ref_name }}"
         VERSION_CLEAN=${VERSION_CLEAN//./-}
         
         pyinstaller --onefile --windowed --name "FamilyModel_${VERSION_CLEAN}" main.py
         
-        # Переименовываем файлы с указанием ОС
         cd dist
         
         if [ -f "FamilyModel_${VERSION_CLEAN}" ]; then
@@ -52,63 +50,64 @@ jobs:
         echo "Built files:"
         ls -la
     
-    - name: Upload artifact (raw)
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: FamilyModel-${{ matrix.os }}-raw
         path: FAMILY/dist/
 
-  package:
-    name: Package artifacts to ZIP
+  release:
+    name: Create Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
     steps:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts
     
-    - name: Create ZIP archives
+    - name: Create ZIP archives and upload directly
       run: |
         cd artifacts
+        # Создаём ZIP-архивы
         for dir in */; do
           dir_name="${dir%/}"
           echo "Packaging ${dir_name}..."
           zip -r "${dir_name}.zip" "$dir_name"
         done
-        echo "ZIP archives created:"
+        echo "ZIP files created:"
         ls -la *.zip
-    
-    - name: Upload ZIP artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: zipped-releases
-        path: artifacts/*.zip
-
-  release:
-    name: Create Release
-    needs: package
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    
-    steps:
-    - name: Download ZIP artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: zipped-releases
-        path: zips
-    
-    - name: List ZIP files (debug)
-      run: |
-        echo "ZIP files:"
-        ls -la zips/
+        
+        # Подготовка к загрузке — копируем ZIP-файлы в отдельную папку с правильными именами
+        mkdir -p ../release_files
+        cp *.zip ../release_files/
+        cd ../release_files
+        echo "Files to upload:"
+        ls -la
     
     - name: Create Release and upload ZIPs
       uses: softprops/action-gh-release@v2
       with:
-        name: ${{ github.ref_name }}
-        overwrite_files: true
-        body: |
-          ## Релиз ${{ github.ref_name }}
-          
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: |
+            ## Релиз ${{ github.ref_name }}
+            
+            ### 📥 Скачайте архив для вашей ОС:
+            
+            | Операционная система | Архив |
+            |---------------------|-------|
+            | 🪟 **Windows** | `FamilyModel-windows-latest-raw.zip` |
+            | 🐧 **Linux** | `FamilyModel-ubuntu-latest-raw.zip` |
+            | 🍎 **macOS** | `FamilyModel-macos-latest-raw.zip` |
+          files: |
+            release_files/FamilyModel-ubuntu-latest-raw.zip
+            release_files/FamilyModel-windows-latest-raw.zip
+            release_files/FamilyModel-macos-latest-raw.zip
+          overwrite_files: true   # <--- правильный параметр
+          draft: false
+          prerelease: false
+              
