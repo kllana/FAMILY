@@ -15,7 +15,7 @@ from config import (
 from colors import COLOR_BG
 from models import World
 from ui import ConfigMenu, ModernButton, Slider, draw_world, draw_simulation
-from statistics import show_statistics
+from show_stats import show_statistics
 
 
 def safe_quit():

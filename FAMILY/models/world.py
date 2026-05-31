@@ -50,6 +50,7 @@ class World:
         self.pop_hist = deque(maxlen=2000)
         self.cap_hist = deque(maxlen=2000)
         self.work_hist = deque(maxlen=2000)
+        self.koff_hist = deque(maxlen=2000)  # История коэффициента расхода
         self.step_counter = 0
 
     def get_avg_resource(self):
@@ -71,6 +72,13 @@ class World:
         if not alive:
             return 0
         return sum(1 for f in alive if f.is_both_working()) / len(alive)
+
+    def get_avg_expenditure(self):
+        """Актуальный средний коэффициент расхода"""
+        alive = [f for f in self.families if f.alive]
+        if not alive:
+            return 0
+        return np.mean([f.expenditure_rate for f in alive])
 
     def update_resource_local(self):
         """Обновление ресурсов с учетом потребления и диффузии"""
@@ -114,19 +122,19 @@ class World:
         """Перемещение семей в поисках лучших ресурсов"""
         w, h = self.w, self.h
         res = self.resource
-    
+        
         for f in self.families:
             if not f.alive:
                 continue
-        
+            
             an = f.adaptation / 100
             crisis_threshold = an * BOARD_RET
-        
+            
             if f.capital < crisis_threshold:
                 if random.random() < MOVE_PROB:
                     best_val = res[f.x, f.y]
                     best_pos = (f.x, f.y)
-                
+                    
                     # Поиск лучшей позиции в радиусе видимости
                     for dx in range(-self.max_vision, self.max_vision + 1):
                         for dy in range(-self.max_vision, self.max_vision + 1):
@@ -141,23 +149,24 @@ class World:
                                 if not occupied and res[nx, ny] > best_val:
                                     best_val = res[nx, ny]
                                     best_pos = (nx, ny)
-                
+                    
                     # Шаг в сторону лучшей позиции
                     if best_pos != (f.x, f.y):
                         dx = np.sign(best_pos[0] - f.x)
                         dy = np.sign(best_pos[1] - f.y)
                         new_x = f.x + dx
                         new_y = f.y + dy
-                    
+                        
                         # Проверка занятости новой позиции
                         occupied = False
                         for f2 in self.families:
                             if f2.alive and f2 != f and f2.x == new_x and f2.y == new_y:
                                 occupied = True
                                 break
-                    
+                        
                         if 0 <= new_x < w and 0 <= new_y < h and not occupied:
                             f.x, f.y = new_x, new_y
+
     def update_families(self):
         """Обновление состояния всех семей"""
         for f in self.families:
@@ -252,6 +261,7 @@ class World:
         self.pop_hist.append(self.get_population())
         self.cap_hist.append(self.get_avg_capital())
         self.work_hist.append(self.get_working_ratio())
+        self.koff_hist.append(self.get_avg_expenditure())
     
     def get_statistics(self):
         """Получение текущей статистики"""
@@ -260,6 +270,7 @@ class World:
             'population': self.get_population(),
             'avg_capital': self.get_avg_capital(),
             'working_ratio': self.get_working_ratio(),
+            'avg_expenditure': self.get_avg_expenditure(),
             'avg_resource': self.get_avg_resource(),
             'is_crisis': self.is_crisis,
             'base_resource': self.base_resource
